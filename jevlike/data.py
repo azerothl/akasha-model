@@ -13,23 +13,52 @@ from urllib.parse import unquote
 import torch
 from torch.utils.data import Dataset
 
+from .primitives import OptionSpec
+
 
 @dataclass(frozen=True)
 class ChoiceExample:
     context: str
     options: tuple[str, ...]
     label: int
+    option_descriptions: tuple[str, ...] = ()
+
+    def option_specs(self) -> tuple[OptionSpec, ...]:
+        descriptions = self.option_descriptions or ("",) * len(self.options)
+        return tuple(
+            OptionSpec(name=name, description=description)
+            for name, description in zip(self.options, descriptions)
+        )
+
+    def option_texts(self) -> tuple[str, ...]:
+        return tuple(option.model_text() for option in self.option_specs())
 
 
 def validate(payload: dict) -> ChoiceExample:
     context, options, label = payload.get("context"), payload.get("options"), payload.get("label")
     if not isinstance(context, str) or not isinstance(options, list):
         raise ValueError("each row needs string context and list options")
-    if len(options) < 2 or any(not isinstance(option, str) or not option for option in options):
-        raise ValueError("options must contain at least two non-empty strings")
+    if len(options) < 2 or len(options) > 255:
+        raise ValueError("options must contain between 2 and 255 entries")
+    names, descriptions = [], []
+    for option in options:
+        if isinstance(option, str):
+            name, description = option, ""
+        elif isinstance(option, dict):
+            name, description = option.get("name"), option.get("description", "")
+            if not isinstance(description, str):
+                raise ValueError("option description must be a string")
+        else:
+            raise ValueError("options must contain strings or option objects")
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("option names must be non-empty strings")
+        names.append(name)
+        descriptions.append(description)
+    if len(set(names)) != len(names):
+        raise ValueError("option names must be unique")
     if not isinstance(label, int) or not 0 <= label < len(options):
         raise ValueError("label must be an option index")
-    return ChoiceExample(context, tuple(options), label)
+    return ChoiceExample(context, tuple(names), label, tuple(descriptions))
 
 
 class JsonlDataset(Dataset[ChoiceExample]):
@@ -57,7 +86,7 @@ class ByteCollator:
 
     def __call__(self, examples: list[ChoiceExample]):
         contexts = [_bytes(item.context, self.context_tokens) for item in examples]
-        option_rows = [[_bytes(option, self.option_tokens) for option in item.options]
+        option_rows = [[_bytes(option, self.option_tokens) for option in item.option_texts()]
                        for item in examples]
         return _tensor_batch(examples, contexts, option_rows, 0)
 
@@ -73,7 +102,7 @@ class HuggingFaceCollator:
             [item.context for item in examples], truncation=True,
             max_length=self.context_tokens, add_special_tokens=True,
         )["input_ids"]
-        flat = [option for item in examples for option in item.options]
+        flat = [option for item in examples for option in item.option_texts()]
         encoded = self.tokenizer(
             flat, truncation=True, max_length=self.option_tokens, add_special_tokens=True,
         )["input_ids"]
@@ -109,6 +138,114 @@ def _tensor_batch(examples, contexts, option_rows, pad_id):
 
 COLOURS = ("amber", "azure", "bronze", "coral", "crimson", "gold", "green", "indigo")
 ANIMALS = ("badger", "crane", "dolphin", "falcon", "gecko", "heron", "ibis", "jaguar")
+
+
+AKASHA_ACTIONS = (
+    "session.open", "session.fork", "memory.lookup", "notes.search",
+    "notes.delete", "task.schedule", "agent.run", "skill.invoke",
+    "tool.request", "model.load", "model.migrate", "media.image",
+    "media.audio", "canvas.compose", "canvas.export", "device.capture",
+    "device.usb", "capability.check", "module.install", "module.ui",
+    "health.snapshot", "troubleshoot.report", "update.apply", "mcp.bridge",
+    "harness.run", "feedback.send",
+)
+
+
+def _akasha_sample(seed: int) -> tuple[ChoiceExample, str, str]:
+    """Build one synthetic policy decision inspired by azerothl/akasha-os.
+
+    The label is generated from an explicit, documented routing policy rather
+    than from a language model. This makes the dataset reproducible and keeps
+    it suitable for testing a choice model without copying project data.
+    """
+    rng = random.Random(seed)
+    scenarios = (
+        ("start a new conversation", "chat", "local", "trusted", "no session is selected", "open a persisted session", "session.open"),
+        ("continue from an earlier message", "chat", "local", "trusted", "the thread has a useful branch", "fork the conversation here", "session.fork"),
+        ("recall a user's preference", "memory", "local", "trusted", "facts exist from previous turns", "bootstrap the agent with saved facts", "memory.lookup"),
+        ("find a note by tag", "notes", "local", "trusted", "the collection is large", "search the notes index", "notes.search"),
+        ("remove an obsolete note", "notes", "local", "trusted", "the user confirmed deletion", "delete the selected note", "notes.delete"),
+        ("run a reminder tomorrow", "tasks", "local", "trusted", "the schedule is durable", "create a scheduled task", "task.schedule"),
+        ("complete a multi-step goal", "agents", "local", "trusted", "the goal loop is enabled", "run a bounded background agent", "agent.run"),
+        ("summarize a document", "chat", "local", "trusted", "a matching skill is installed", "invoke the workflow skill", "skill.invoke"),
+        ("fetch a public webpage", "chat", "network", "untrusted", "network access is opt-in", "request the web tool", "tool.request"),
+        ("load a model for a low VRAM machine", "models", "gpu", "trusted", "the selected pack is not resident", "load the compatible model pack", "model.load"),
+        ("move an active completion from GPU to CPU", "models", "gpu", "trusted", "the GPU is under pressure", "migrate the running model", "model.migrate"),
+        ("generate a poster", "create", "gpu", "trusted", "an image pack is installed", "generate an image", "media.image"),
+        ("read a generated answer aloud", "chat", "local", "trusted", "a voice pack is available", "generate audio with TTS", "media.audio"),
+        ("arrange shapes on a visual board", "canvas", "gpu", "trusted", "scene validation is enabled", "compose the canvas scene", "canvas.compose"),
+        ("save a board for another app", "canvas", "local", "trusted", "the scene is valid", "export PNG, SVG and JSON", "canvas.export"),
+        ("take a webcam snapshot", "device", "local", "restricted", "the user has not granted permission", "request device confirmation", "device.capture"),
+        ("read a serial sensor", "device", "usb", "restricted", "USB capability is absent", "request the USB capability", "device.usb"),
+        ("write to a protected folder", "security", "local", "restricted", "the path is outside the allowlist", "verify capabilities before execution", "capability.check"),
+        ("install a community module", "settings", "network", "untrusted", "the signature has not been checked", "review and verify the module", "module.install"),
+        ("show a module's form and table", "module", "local", "trusted", "the module declares declarative UI", "render its widget tree", "module.ui"),
+        ("inspect a slow inference service", "diagnostics", "local", "trusted", "latency residuals are abnormal", "collect a health snapshot", "health.snapshot"),
+        ("prepare a bug report", "diagnostics", "local", "trusted", "diagnostics found actionable findings", "open a GitHub report", "troubleshoot.report"),
+        ("apply a downloaded release", "updates", "local", "trusted", "the overlay hash is valid", "apply the update on next launch", "update.apply"),
+        ("connect an external IDE", "integration", "local", "trusted", "the MCP façade is enabled", "serve the model and memory tools", "mcp.bridge"),
+        ("let a coding CLI edit a repository", "agents", "local", "restricted", "the harness is explicitly enabled", "run the external coding harness", "harness.run"),
+        ("send a structured product report", "feedback", "network", "untrusted", "the user attached diagnostics", "submit local feedback", "feedback.send"),
+    )
+    task, surface, resource, trust, state, goal, target = rng.choice(scenarios)
+    candidates = [target]
+    candidates.extend(rng.sample([item for item in AKASHA_ACTIONS if item != target], 7))
+    rng.shuffle(candidates)
+    signal = rng.choice((
+        "fresh request", "after restart", "user confirmed", "user cancelled",
+        "low context", "high context", "queue empty", "queue busy",
+        "model ready", "model missing", "permission pending", "permission granted",
+        "network disabled", "network allowed", "disk low", "disk healthy",
+        "gpu idle", "gpu busy", "audit required", "audit clean",
+        "retryable failure", "signed artifact", "offline mode", "interactive mode",
+    ))
+    templates = (
+        "Request={task}; surface={surface}; resource={resource}; trust={trust}; state={state}; signal={signal}. Action={goal}.",
+        "User asks: {task}. surface={surface}, resource={resource}, trust={trust}, state={state}, signal={signal}. Choose: {goal}.",
+        "Route {task}. Runtime: {surface}/{resource}; policy={trust}; state={state}; signal={signal}. Next: {goal}.",
+        "Task={task}. Capability review applies. surface={surface}; resource={resource}; trust={trust}; state={state}; signal={signal}. Goal={goal}.",
+    )
+    item = ChoiceExample(
+        context=rng.choice(templates).format(
+            task=task, surface=surface, resource=resource, trust=trust,
+            state=state, signal=signal, goal=goal,
+        ) + " Offline-first, capability-based OS.",
+        options=tuple(candidates),
+        label=candidates.index(target),
+    )
+    return item, task, signal
+
+
+def akasha_example(seed: int) -> ChoiceExample:
+    """Build one synthetic Akasha-OS-style routing example."""
+    return _akasha_sample(seed)[0]
+
+
+def write_akasha_os(
+    output: Path, sizes: dict[str, int], seed: int, split_by: str = "family"
+) -> None:
+    """Write grouped splits without putting a family/context in two files."""
+    if split_by not in {"family", "context"}:
+        raise ValueError("split_by must be 'family' or 'context'")
+    output.mkdir(parents=True, exist_ok=True)
+    rows = {split: [] for split in sizes}
+    attempts = 0
+    while any(len(rows[split]) < size for split, size in sizes.items()):
+        item, family, signal = _akasha_sample(seed + attempts * 104729)
+        group = family if split_by == "family" else f"{family}|{signal}"
+        bucket = _stable(group + ":akasha-split") % 10
+        split = "test" if bucket == 0 else "validation" if bucket == 1 else "train"
+        if len(rows[split]) < sizes[split]:
+            rows[split].append({
+                "context": item.context, "options": item.options, "label": item.label,
+            })
+        attempts += 1
+        if attempts > max(sizes.values()) * 1000:
+            raise RuntimeError("could not fill grouped Akasha-OS splits")
+    for split, payloads in rows.items():
+        with (output / f"{split}.jsonl").open("w", encoding="utf-8") as handle:
+            for payload in payloads:
+                handle.write(json.dumps(payload) + "\n")
 
 
 def synthetic_example(seed: int) -> ChoiceExample:
@@ -207,6 +344,16 @@ def main() -> None:
     synthetic.add_argument("--validation", type=int, default=400)
     synthetic.add_argument("--test", type=int, default=400)
     synthetic.add_argument("--seed", type=int, default=17)
+    akasha = commands.add_parser("akasha-os", help="build an Akasha-OS-style routing dataset")
+    akasha.add_argument("--output", type=Path, default=Path("data/akasha_os"))
+    akasha.add_argument("--train", type=int, default=2600)
+    akasha.add_argument("--validation", type=int, default=520)
+    akasha.add_argument("--test", type=int, default=520)
+    akasha.add_argument("--seed", type=int, default=23)
+    akasha.add_argument(
+        "--split-by", choices=("family", "context"), default="family",
+        help="keep each scenario family or family+runtime-context group in one split",
+    )
     wiki = commands.add_parser("wikispeedia")
     wiki.add_argument("--root", type=Path, required=True)
     wiki.add_argument("--output", type=Path, required=True)
@@ -215,6 +362,10 @@ def main() -> None:
         write_synthetic(args.output, {
             "train": args.train, "validation": args.validation, "test": args.test,
         }, args.seed)
+    elif args.command == "akasha-os":
+        write_akasha_os(args.output, {
+            "train": args.train, "validation": args.validation, "test": args.test,
+        }, args.seed, args.split_by)
     else:
         build_wikispeedia(args.root, args.output)
 

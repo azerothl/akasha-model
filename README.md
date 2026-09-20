@@ -47,6 +47,113 @@ Use one JSON object per line:
 
 `label` is the zero-based index of the correct option. Each row may have a different number of options, with a minimum of two.
 
+For Jev-like semantic criteria, an option can also be an object. The old
+string format remains valid:
+
+```json
+{"context":"The user asks for a webpage.","options":[{"name":"tool.request","description":"Use the network tool for an external fetch."},{"name":"skill.invoke","description":"Use an installed local workflow."}],"label":0}
+```
+
+The package exposes three typed decision contracts in `jevlike.primitives`:
+
+```python
+from jevlike import ChoiceQuestion, NoulQuestion, OptionSpec, ScoreLevel, ScoreQuestion
+
+choice = ChoiceQuestion(
+    "route", "Choose the safest route.",
+    (OptionSpec("tool.request", "Use the network tool."),
+     OptionSpec("skill.invoke", "Use a local skill.")),
+)
+score = ScoreQuestion(
+    "risk", "Rate the risk.",
+    (ScoreLevel("low"), ScoreLevel("high")),
+)
+noul = NoulQuestion("authorized", "Is the operation authorized?")
+```
+
+These contracts are the first compatibility layer for the multi-primitive
+model. They validate bounded options, ordered score levels, probability
+distributions and explicit abstention thresholds. Authorization, side effects
+and workflow decisions remain application code rather than model output.
+
+### Tool calling: planification, pas exécution
+
+Le modèle multitâche ne génère pas directement un appel de fonction JSON et
+ne possède aucun exécuteur d’outil. `Choice` sélectionne un outil dans un
+catalogue borné, `Score` estime un niveau de risque et `Noul` fournit des
+signaux binaires comme l’autorisation, la présence d’une capability ou la
+suffisance du contexte. L’application doit ensuite valider les arguments,
+les permissions et la confirmation humaine avant tout effet de bord.
+
+`jevlike.tool_calling.ToolCallPlanner` fournit cette frontière déterministe :
+il retourne un plan `ready`, `abstain` ou `blocked`, valide un sous-ensemble du
+schéma JSON des paramètres et ne lance jamais l’outil. Akasha-OS doit fournir
+son propre exécuteur après un plan `ready` et refaire ses contrôles finaux.
+
+```python
+from jevlike import ToolCallPlanner, ToolSpec
+
+spec = ToolSpec(
+    "fs.read", "Lire un fichier",
+    parameters={"type": "object", "required": ["path"],
+                "properties": {"path": {"type": "string"}},
+                "additionalProperties": False},
+    required_capability="workspace_access",
+)
+plan = ToolCallPlanner().plan(
+    choice_result, {spec.name: spec}, arguments={"path": "notes.txt"},
+    nouls={"authorized": authorized_result,
+           "capability_present": capability_result,
+           "sufficient_context": context_result},
+)
+if plan.status == "ready":
+    akasha_executor.execute(plan.tool_name, plan.arguments)
+```
+
+### Multi-question training
+
+The shared-context model accepts several atomic questions in one JSONL row.
+The encoder is shared, while `Choice`, `Score` and `Noul` have independent
+heads:
+
+```json
+{"context":{"request":"access a protected device","offline":true},"questions":[{"id":"route","type":"choice","instructions":"Choose the route.","options":[{"name":"deny","description":"Block the operation."},{"name":"allow","description":"Permit the operation."}],"label":0},{"id":"risk","type":"score","instructions":"Rate the risk.","levels":["low","high"],"label":1},{"id":"authorized","type":"noul","instructions":"Is it authorized?","criteria":{"true":"The user explicitly granted the capability.","false":"No explicit grant is present."},"label":0}]}
+```
+
+Train it with the separate multi-question command:
+
+```sh
+jevlike-multitask-train data/akasha_os_multi/train.jsonl \
+  --validation data/akasha_os_multi/validation.jsonl \
+  --output runs/akasha-os-multitask.pt
+```
+
+`label` is an option index for `Choice` and a level index for `Score`. Score
+levels are ordered descriptions, numbered internally from 0; they are not
+arbitrary numeric measurements. A `Noul` returns the probability that the
+condition in its instructions is true, with values near 0.5 representing
+uncertainty.
+
+Evaluate the three heads separately on the held-out test and stress sets:
+
+```powershell
+jevlike-multitask-eval `
+  runs\akasha_os_multi.pt `
+  data\akasha_os_multi\test.jsonl `
+  --stress data\akasha_os_multi\stress.jsonl `
+  --output reports\akasha_os_multi_metrics.json
+```
+
+The report includes accuracy and calibration for `Choice`, ordinal error for
+`Score`, AUROC/Brier/log loss for `Noul`, coverage-risk tables, and stress
+results broken down by `stress_type`.
+
+The multi-question defaults are sized for structured Akasha states:
+`context_tokens=768`, `question_tokens=512` and `option_tokens=384`.
+Lower values may silently truncate criteria and source-derived descriptions.
+`Noul` uses `0` or `1`. Rows may contain any subset of the three question
+types; absent heads are skipped for that batch.
+
 ## Quickstart
 
 Run these commands from the repository root. They create local synthetic data, train on it, evaluate the saved model and score one new menu.
@@ -65,10 +172,97 @@ jevlike-predict runs/synthetic.pt \
   --context "Choose the exact badge amber badger. Badge: amber badger." \
   --option "azure crane" \
   --option "amber badger" \
-  --option "gold heron"
+   --option "gold heron"
 ```
 
-The evaluation prints top-1 accuracy, which is the fraction of correct first choices. Top-3 accuracy is the fraction with the right answer among the three highest scores. Expected calibration error compares confidence with observed accuracy. The command also prints a shuffled-context control, which pairs each menu with the wrong context. A useful model should beat that control.
+At inference time, option descriptions can be supplied and the application can
+request abstention below a confidence threshold:
+
+```sh
+jevlike-predict runs/synthetic.pt \
+  --context "The user asks to fetch a public webpage." \
+  --option tool.request \
+  --option skill.invoke \
+  --option-description "Use the network tool for an external fetch." \
+  --option-description "Use an installed local workflow." \
+  --min-confidence 0.75
+```
+
+The evaluation prints top-1 accuracy, which is the fraction of correct first choices. Top-3 accuracy is the fraction with the right answer among the three highest scores. It also reports negative log-likelihood (NLL), Brier score and expected calibration error (ECE). ECE compares confidence with observed accuracy. The command also prints a shuffled-context control, which pairs each menu with the wrong context. A useful model should beat that control.
+
+## Calibrate a trained model
+
+Use a separate calibration split that was not used to train or select the model. Temperature scaling changes the sharpness of the probabilities without changing the ranking of the options:
+
+```sh
+jevlike-calibrate runs/synthetic.pt data/synthetic/validation.jsonl \
+  --output runs/synthetic-calibrated.pt
+jevlike-eval runs/synthetic-calibrated.pt data/synthetic/test.jsonl
+```
+
+The fitted temperature is stored in the checkpoint and applied automatically by `jevlike-predict` and `jevlike-eval`. Compare NLL, Brier score and ECE on the held-out test set before deciding whether calibration helped. Calibration improves the reliability of probabilities; it does not necessarily improve top-1 accuracy.
+
+Training can also include a calibration-aware objective. The default weight is zero, which keeps the original training behavior. A small positive weight adds the multiclass Brier score to the cross-entropy objective:
+
+```sh
+jevlike-train data/synthetic/train.jsonl \
+  --validation data/synthetic/validation.jsonl \
+  --output runs/synthetic-calibration-aware.pt \
+  --calibration-weight 0.1
+```
+
+Tune this weight on a validation split. Do not assume that a lower calibration loss improves accuracy, and always compare the final held-out NLL, Brier score and ECE against the unmodified baseline.
+
+## Leakage-resistant splits
+
+When related rows share the same context, split by context rather than by row. The helper below combines JSONL files and keeps every identical context in exactly one split:
+
+```sh
+python scripts/split_by_context.py data/akasha_os data/akasha_os_grouped
+```
+
+Train and evaluate against `data/akasha_os_grouped`. Check that the reported context sets do not overlap before interpreting the test metrics.
+
+To probe robustness without contaminating training, derive an evaluation-only stress set from the grouped test split:
+
+```sh
+python scripts/make_stress_eval.py \
+  data/akasha_os_grouped/test.jsonl \
+  data/akasha_os_grouped/stress.jsonl
+jevlike-eval runs/akasha_os_grouped/baseline.pt \
+  data/akasha_os_grouped/stress.jsonl
+```
+
+The stress set contains ambiguous-context and irrelevant-noise variants. Its labels inherit the original test labels, so treat it as a robustness probe rather than a replacement for a human-labelled benchmark.
+
+## Ensemble abstention
+
+For uncertainty-sensitive decisions, train several checkpoints with different seeds and evaluate their agreement:
+
+```sh
+jevlike-ensemble-eval \
+  runs/akasha_os_ensemble/seed-11.pt \
+  runs/akasha_os_ensemble/seed-23.pt \
+  runs/akasha_os_ensemble/seed-37.pt \
+  --data data/akasha_os_grouped/stress.jsonl
+```
+
+The ensemble averages probabilities and reports the fraction of examples on which every model agrees. A conservative application can abstain when the models disagree; `unanimous_accuracy` measures the accuracy of the remaining decisions and `unanimous_coverage` measures how often a decision is still returned.
+
+Use the same policy at inference time:
+
+```sh
+jevlike-ensemble-predict \
+  runs/akasha_os_ensemble/seed-11.pt \
+  runs/akasha_os_ensemble/seed-23.pt \
+  runs/akasha_os_ensemble/seed-37.pt \
+  --context "User asks to fetch a public webpage." \
+  --option tool.request \
+  --option skill.invoke \
+  --option capability.check
+```
+
+The command abstains when the ensemble disagrees or when its mean confidence is below the configured threshold.
 
 ## Use your own data
 
@@ -79,6 +273,74 @@ The evaluation prints top-1 accuracy, which is the fraction of correct first cho
 5. Run `jevlike-eval` once on the held-out test file. Held-out means the file was never used for training or model selection.
 
 The default byte encoder truncates context to 192 bytes and each option to 32 bytes. Raise `--context-tokens` or `--option-tokens` when your text needs more room. Training supports CPU, Apple MPS for a Mac GPU, and CUDA for an NVIDIA GPU through `--device`.
+
+### Akasha-OS-style routing data
+
+The repository can generate a deterministic, synthetic policy dataset inspired
+by [azerothl/akasha-os](https://github.com/azerothl/akasha-os): the context
+describes a task, surface, resource and trust state; the options are possible
+OS-level actions; and `label` identifies the action selected by a small routing
+policy. It covers sessions, memory, scheduled tasks, agents, skills, tools,
+model packs and capability checks. It is a local synthetic benchmark, not a
+dump of Akasha OS telemetry.
+
+```sh
+jevlike-data akasha-os --output data/akasha_os
+jevlike-train data/akasha_os/train.jsonl \
+  --validation data/akasha_os/validation.jsonl \
+  --output runs/akasha-os.pt
+jevlike-eval runs/akasha-os.pt data/akasha_os/test.jsonl
+```
+
+Les splits sont groupés par famille de scénario par défaut : une famille
+(par exemple Canvas, mémoire ou périphérique) reste entièrement dans un seul
+fichier. Pour un split plus fin, regroupe plutôt par famille et signal runtime
+(GPU, permissions, réseau, audit, etc.) :
+
+```sh
+jevlike-data akasha-os --output data/akasha_os_context --split-by context
+```
+
+Cela évite qu'une même situation de contexte ou une variante quasi identique
+se retrouve à la fois dans l'entraînement et dans l'évaluation.
+
+Pour la version v2 dérivée du checkout source local, avec abstention et audit :
+
+```powershell
+.venv\Scripts\python.exe scripts\generate_akasha_dataset.py `
+  --akasha-root <chemin-vers-akasha-os> `
+  --output data\akasha_os_v2 `
+  --seed 20260918 `
+  --total 30000
+.venv\Scripts\python.exe scripts\audit_akasha_dataset.py `
+  --input data\akasha_os_v2
+```
+
+`stress.jsonl` est réservé à l'évaluation. Le rapport complet se trouve dans
+`reports/akasha_dataset_report.md`.
+
+### Akasha OS — dataset multitâche source-derived
+
+Pour entraîner séparément les têtes `Choice`, `Score` et `Noul` sur des
+scénarios dérivés des identifiants réellement présents dans le checkout local
+d'Akasha OS :
+
+```powershell
+.venv\Scripts\python.exe scripts\generate_akasha_multitask_dataset.py `
+  --akasha-root <chemin-vers-akasha-os> `
+  --output data\akasha_os_multi `
+  --seed 20260918 `
+  --total 30000
+.venv\Scripts\python.exe -m jevlike.multitask_train `
+  data\akasha_os_multi\train.jsonl `
+  --validation data\akasha_os_multi\validation.jsonl `
+  --output runs\akasha_os_multi.pt
+```
+
+Cette version produit 24 000 lignes d'entraînement, 3 000 de validation,
+3 000 de test et 3 000 lignes `stress` séparées. Le détail de la provenance,
+des familles et de l'audit se trouve dans
+`reports/akasha_multitask_dataset_report.md`.
 
 ## Use a frozen pretrained encoder
 

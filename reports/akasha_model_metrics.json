@@ -1,0 +1,78 @@
+{
+  "test": {
+    "akasha_os_v2_baseline": {
+      "accuracy": 0.5455555319786072,
+      "macro_f1": 0.32610927770822185,
+      "nll": 1.1476680040359497,
+      "brier": 0.5535315275192261,
+      "ece": 0.05912348623678554,
+      "abstention_rate": 0.23466666666666666,
+      "coverage": 0.7653333333333333,
+      "conditional_accuracy_after_abstention": 0.4062137049941928,
+      "dangerous_error_rate": 0.0,
+      "examples": 4500
+    },
+    "akasha_os_v2_calibrated": {
+      "accuracy": 0.6033333539962769,
+      "macro_f1": 0.3901084135330811,
+      "nll": 1.048185110092163,
+      "brier": 0.5035170912742615,
+      "ece": 0.02229874960903544,
+      "abstention_rate": 0.23466666666666666,
+      "coverage": 0.7653333333333333,
+      "conditional_accuracy_after_abstention": 0.4817073170731707,
+      "dangerous_error_rate": 0.0,
+      "examples": 4500
+    },
+    "ensemble": {
+      "accuracy": 0.6495555639266968,
+      "macro_f1": 0.4366753810833155,
+      "nll": 0.9888516664505005,
+      "brier": 0.4734436273574829,
+      "ece": 0.10143113337107934,
+      "abstention_rate": 0.23466666666666666,
+      "coverage": 0.7653333333333333,
+      "conditional_accuracy_after_abstention": 0.5421022067363531,
+      "dangerous_error_rate": 0.0,
+      "examples": 4500
+    }
+  },
+  "stress": {
+    "akasha_os_v2_baseline": {
+      "accuracy": 0.6213333606719971,
+      "macro_f1": 0.39410028477929426,
+      "nll": 0.9629939198493958,
+      "brier": 0.46511995792388916,
+      "ece": 0.038485093478811905,
+      "abstention_rate": 0.3406666666666667,
+      "coverage": 0.6593333333333333,
+      "conditional_accuracy_after_abstention": 0.4256825075834176,
+      "dangerous_error_rate": 0.0,
+      "examples": 3000
+    },
+    "akasha_os_v2_calibrated": {
+      "accuracy": 0.6629999876022339,
+      "macro_f1": 0.4620369905806354,
+      "nll": 0.8871342539787292,
+      "brier": 0.43045544624328613,
+      "ece": 0.034570313640870154,
+      "abstention_rate": 0.3406666666666667,
+      "coverage": 0.6593333333333333,
+      "conditional_accuracy_after_abstention": 0.48887765419615775,
+      "dangerous_error_rate": 0.0,
+      "examples": 3000
+    },
+    "ensemble": {
+      "accuracy": 0.7099999785423279,
+      "macro_f1": 0.5359613216184105,
+      "nll": 0.8332566618919373,
+      "brier": 0.4014441668987274,
+      "ece": 0.09920931266970001,
+      "abstention_rate": 0.3406666666666667,
+      "coverage": 0.6593333333333333,
+      "conditional_accuracy_after_abstention": 0.5601617795753286,
+      "dangerous_error_rate": 0.0,
+      "examples": 3000
+    }
+  }
+}

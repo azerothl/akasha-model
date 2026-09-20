@@ -49,6 +49,7 @@ class TinyScorer(nn.Module):
         self.embedding = nn.Embedding(257, width, padding_idx=0)
         self.position = nn.Embedding(context_tokens, width)
         self.head = AttentionHead(width, rank)
+        self.temperature = 1.0
 
     def forward(self, batch: dict[str, torch.Tensor], shuffle_context: bool = False):
         context_ids = batch["context_ids"]
@@ -60,7 +61,7 @@ class TinyScorer(nn.Module):
         return self.head(
             context, batch["context_mask"], options, batch["option_mask"],
             shuffle_context,
-        )
+        ) / self.temperature
 
 
 class FrozenTransformerScorer(nn.Module):
@@ -71,6 +72,7 @@ class FrozenTransformerScorer(nn.Module):
         self.encoder = AutoModel.from_pretrained(model_name)
         self.encoder.requires_grad_(False).eval()
         self.head = AttentionHead(self.encoder.config.hidden_size, rank)
+        self.temperature = 1.0
 
     def forward(self, batch: dict[str, torch.Tensor], shuffle_context: bool = False):
         self.encoder.eval()
@@ -91,7 +93,7 @@ class FrozenTransformerScorer(nn.Module):
         return self.head(
             context, batch["context_mask"], options, batch["option_mask"],
             shuffle_context,
-        )
+        ) / self.temperature
 
 
 def select_device(name: str) -> torch.device:
@@ -123,6 +125,9 @@ def make_system(config: dict, device: torch.device):
         collator = HuggingFaceCollator(
             tokenizer, config["context_tokens"], config["option_tokens"]
         )
+    model.temperature = float(config.get("temperature", 1.0))
+    if model.temperature <= 0:
+        raise ValueError("temperature must be positive")
     return model.to(device), collator
 
 

@@ -29,6 +29,12 @@ jevlike-data = "jevlike.data:main"
 jevlike-train = "jevlike.train:main"
 jevlike-eval = "jevlike.eval:main"
 jevlike-predict = "jevlike.predict:main"
+jevlike-calibrate = "jevlike.calibration:main"
+jevlike-ensemble-eval = "jevlike.ensemble:main"
+jevlike-ensemble-predict = "jevlike.ensemble:predict_main"
+jevlike-multitask-train = "jevlike.multitask_train:main"
+jevlike-multitask-eval = "jevlike.multitask_eval:main"
+jevlike-multitask-calibrate = "jevlike.multitask_calibrate:main"
 
 [tool.setuptools.packages.find]
 include = ["jevlike*"]

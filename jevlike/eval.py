@@ -6,6 +6,7 @@ import argparse
 import json
 
 import torch
+from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
 from .data import JsonlDataset
@@ -13,15 +14,25 @@ from .model import load_checkpoint, select_device
 from .train import move
 
 
+def _pad_logits(items: list[torch.Tensor]) -> torch.Tensor:
+    width = max(item.shape[1] for item in items)
+    fill = -1e4
+    return torch.cat([
+        F.pad(item.clamp_min(fill), (0, width - item.shape[1]), value=fill)
+        for item in items
+    ])
+
+
 @torch.no_grad()
 def metrics(model, loader, device, shuffle_context=False):
     model.eval()
     top1 = top3 = total = 0
-    confidences, predictions, labels = [], [], []
+    confidences, predictions, labels, all_logits = [], [], [], []
     for host_batch in loader:
         batch = move(host_batch, device)
         logits = model(batch, shuffle_context=shuffle_context).cpu()
         probabilities = logits.softmax(-1)
+        all_logits.append(logits)
         ranking = logits.topk(min(3, logits.shape[1]), dim=-1).indices
         batch_labels = batch["labels"].cpu()
         top1 += int(ranking[:, 0].eq(batch_labels).sum())
@@ -31,9 +42,8 @@ def metrics(model, loader, device, shuffle_context=False):
         confidences.append(confidence)
         predictions.append(prediction)
         labels.append(batch["labels"].cpu())
-    confidence, prediction, labels = map(
-        torch.cat, (confidences, predictions, labels)
-    )
+    confidence, prediction, labels = map(torch.cat, (confidences, predictions, labels))
+    logits = _pad_logits(all_logits)
     ece = 0.0
     for lower in torch.linspace(0, 0.9, 10):
         selected = (confidence >= lower) & (confidence < lower + 0.1)
@@ -44,7 +54,10 @@ def metrics(model, loader, device, shuffle_context=False):
     return {
         "top1": top1 / total,
         "top3": top3 / total,
-        "ece": ece, "examples": labels.numel(),
+        "ece": ece,
+        "nll": float(F.cross_entropy(logits, labels)),
+        "brier": float((logits.softmax(-1) - F.one_hot(labels, logits.shape[1])).square().sum(-1).mean()),
+        "examples": labels.numel(),
     }
 
 

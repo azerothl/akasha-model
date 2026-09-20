@@ -18,6 +18,20 @@ def move(batch, device):
     return {name: tensor.to(device) for name, tensor in batch.items()}
 
 
+def brier_loss(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    """Multiclass Brier score for the active option set."""
+    probabilities = logits.softmax(-1)
+    targets = F.one_hot(labels, num_classes=logits.shape[-1]).to(probabilities.dtype)
+    return (probabilities - targets).square().sum(-1).mean()
+
+
+def training_loss(logits: torch.Tensor, labels: torch.Tensor,
+                  calibration_weight: float) -> tuple[torch.Tensor, torch.Tensor]:
+    cross_entropy = F.cross_entropy(logits, labels)
+    calibration = brier_loss(logits, labels)
+    return cross_entropy + calibration_weight * calibration, calibration
+
+
 @torch.no_grad()
 def mean_loss(model, loader, device):
     model.eval()
@@ -44,9 +58,13 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=8)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--learning-rate", type=float, default=2e-3)
+    parser.add_argument("--calibration-weight", type=float, default=0.0,
+                        help="weight of the Brier calibration loss; 0 preserves the baseline")
     parser.add_argument("--device", choices=("auto", "cpu", "mps", "cuda"), default="auto")
     parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args()
+    if args.calibration_weight < 0:
+        parser.error("--calibration-weight must be non-negative")
     torch.manual_seed(args.seed)
     device = select_device(args.device)
     config = {
@@ -68,21 +86,25 @@ def main() -> None:
     best_loss, best_state = float("inf"), None
     for epoch in range(args.epochs):
         model.train()
-        total, count = 0.0, 0
+        total, calibration_total, count = 0.0, 0.0, 0
         for host_batch in train_loader:
             batch = move(host_batch, device)
-            loss = F.cross_entropy(model(batch), batch["labels"])
+            loss, calibration = training_loss(
+                model(batch), batch["labels"], args.calibration_weight,
+            )
             optimiser.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(parameters, 1.0)
             optimiser.step()
             total += float(loss.detach()) * batch["labels"].numel()
+            calibration_total += float(calibration.detach()) * batch["labels"].numel()
             count += batch["labels"].numel()
         validation_loss = mean_loss(model, validation_loader, device)
         if validation_loss < best_loss:
             best_loss, best_state = validation_loss, trainable_state(model)
         print(json.dumps({
             "epoch": epoch + 1, "train_nll": total / count,
+            "train_brier": calibration_total / count,
             "validation_nll": validation_loss, "device": str(device),
         }))
     output = Path(args.output)

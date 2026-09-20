@@ -1,0 +1,270 @@
+{
+  "counts": {
+    "train": 24000,
+    "validation": 3000,
+    "test": 3000,
+    "stress": 3000,
+    "ood": 3000
+  },
+  "question_types": {
+    "choice": 36000,
+    "score": 36000,
+    "noul": 324000
+  },
+  "labels": {
+    "choice": {
+      "5": 3877,
+      "4": 3734,
+      "9": 1916,
+      "7": 3736,
+      "6": 3856,
+      "8": 3816,
+      "2": 3783,
+      "3": 3734,
+      "1": 3769,
+      "0": 3779
+    },
+    "score": {
+      "0": 17319,
+      "2": 6767,
+      "1": 8262,
+      "3": 3652
+    },
+    "noul": {
+      "1": 126402,
+      "0": 197598
+    }
+  },
+  "labels_by_question_id": {
+    "route": {
+      "5": 3877,
+      "4": 3734,
+      "9": 1916,
+      "7": 3736,
+      "6": 3856,
+      "8": 3816,
+      "2": 3783,
+      "3": 3734,
+      "1": 3769,
+      "0": 3779
+    },
+    "operation_risk": {
+      "0": 17319,
+      "2": 6767,
+      "1": 8262,
+      "3": 3652
+    },
+    "authorized": {
+      "1": 16831,
+      "0": 19169
+    },
+    "capability_present": {
+      "1": 31258,
+      "0": 4742
+    },
+    "confirmation_needed": {
+      "0": 24357,
+      "1": 11643
+    },
+    "protected_resource": {
+      "0": 31241,
+      "1": 4759
+    },
+    "requires_network": {
+      "0": 34989,
+      "1": 1011
+    },
+    "irreversible": {
+      "0": 32348,
+      "1": 3652
+    },
+    "prompt_injection": {
+      "0": 33424,
+      "1": 2576
+    },
+    "sufficient_context": {
+      "1": 19535,
+      "0": 16465
+    },
+    "offline_compatible": {
+      "1": 35137,
+      "0": 863
+    }
+  },
+  "violations": [],
+  "excluded": [],
+  "collisions": {
+    "train_vs_validation": {
+      "state_exact_or_normalized": 0,
+      "question_instances": 0,
+      "families_shared": 0
+    },
+    "train_vs_test": {
+      "state_exact_or_normalized": 0,
+      "question_instances": 0,
+      "families_shared": 0
+    },
+    "validation_vs_test": {
+      "state_exact_or_normalized": 0,
+      "question_instances": 0,
+      "families_shared": 0
+    },
+    "train_vs_ood": {
+      "state_exact_or_normalized": 0,
+      "question_instances": 0,
+      "families_shared": 0
+    },
+    "validation_vs_ood": {
+      "state_exact_or_normalized": 0,
+      "question_instances": 0,
+      "families_shared": 0
+    },
+    "test_vs_ood": {
+      "state_exact_or_normalized": 0,
+      "question_instances": 0,
+      "families_shared": 0
+    }
+  },
+  "families": {
+    "train": 4377,
+    "validation": 501,
+    "test": 511,
+    "stress": 160,
+    "ood": 48
+  },
+  "lengths": {
+    "context": {
+      "min": 471,
+      "mean": 557.42,
+      "max": 749
+    },
+    "question": {
+      "min": 88,
+      "mean": 197.18,
+      "max": 315
+    },
+    "option": {
+      "min": 43,
+      "mean": 138.75,
+      "max": 224
+    }
+  },
+  "truncation": {
+    "context_bytes_768": 0,
+    "question_bytes_512": 0,
+    "option_bytes_384": 0
+  },
+  "ambiguous_cases": 5449,
+  "abstention_cases": 16465,
+  "stress_types": {
+    "ambiguous": 300,
+    "irrelevant_noise": 300,
+    "prompt_injection": 300,
+    "missing_context": 300,
+    "conflicting_state": 300,
+    "permission_boundary": 300,
+    "unknown_action": 300,
+    "offline_network": 300,
+    "expired_capability": 300,
+    "unsigned_install": 300
+  },
+  "ood": {
+    "rows": 3000,
+    "families": 48
+  },
+  "semantic_ambiguity": {
+    "train": {
+      "semantic_context_groups_with_multiple_targets": {
+        "route": 0,
+        "operation_risk": 0,
+        "authorized": 0,
+        "capability_present": 0,
+        "confirmation_needed": 0,
+        "protected_resource": 0,
+        "requires_network": 0,
+        "irreversible": 0,
+        "prompt_injection": 0,
+        "sufficient_context": 0,
+        "offline_compatible": 0
+      },
+      "duplicate_target_description_rows": 0,
+      "metadata_count_mismatch": 0
+    },
+    "validation": {
+      "semantic_context_groups_with_multiple_targets": {
+        "route": 0,
+        "operation_risk": 0,
+        "authorized": 0,
+        "capability_present": 0,
+        "confirmation_needed": 0,
+        "protected_resource": 0,
+        "requires_network": 0,
+        "irreversible": 0,
+        "prompt_injection": 0,
+        "sufficient_context": 0,
+        "offline_compatible": 0
+      },
+      "duplicate_target_description_rows": 0,
+      "metadata_count_mismatch": 0
+    },
+    "test": {
+      "semantic_context_groups_with_multiple_targets": {
+        "route": 0,
+        "operation_risk": 0,
+        "authorized": 0,
+        "capability_present": 0,
+        "confirmation_needed": 0,
+        "protected_resource": 0,
+        "requires_network": 0,
+        "irreversible": 0,
+        "prompt_injection": 0,
+        "sufficient_context": 0,
+        "offline_compatible": 0
+      },
+      "duplicate_target_description_rows": 0,
+      "metadata_count_mismatch": 0
+    },
+    "stress": {
+      "semantic_context_groups_with_multiple_targets": {
+        "route": 0,
+        "operation_risk": 0,
+        "authorized": 0,
+        "capability_present": 0,
+        "confirmation_needed": 0,
+        "protected_resource": 0,
+        "requires_network": 0,
+        "irreversible": 0,
+        "prompt_injection": 0,
+        "sufficient_context": 0,
+        "offline_compatible": 0
+      },
+      "duplicate_target_description_rows": 0,
+      "metadata_count_mismatch": 0
+    },
+    "ood": {
+      "semantic_context_groups_with_multiple_targets": {
+        "route": 0,
+        "operation_risk": 0,
+        "authorized": 0,
+        "capability_present": 0,
+        "confirmation_needed": 0,
+        "protected_resource": 0,
+        "requires_network": 0,
+        "irreversible": 0,
+        "prompt_injection": 0,
+        "sufficient_context": 0,
+        "offline_compatible": 0
+      },
+      "duplicate_target_description_rows": 0,
+      "metadata_count_mismatch": 0
+    }
+  },
+  "quality_gate": {
+    "formal_schema_and_leakage": true,
+    "no_cross_split_context_collisions": true,
+    "no_request_label_conflicts": true,
+    "no_duplicate_choice_target_descriptions": true,
+    "metadata_aligned": true
+  },
+  "ok": true
+}

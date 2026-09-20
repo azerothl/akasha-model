@@ -5,6 +5,8 @@ __pycache__/
 *.py[cod]
 data/
 runs/
+work/
+uv.lock
 build/
 dist/
 .DS_Store

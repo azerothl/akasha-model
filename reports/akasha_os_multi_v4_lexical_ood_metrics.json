@@ -1,0 +1,765 @@
+{
+  "checkpoint": "runs\\akasha_os_multi_v4_lexical.pt",
+  "config": {
+    "width": 64,
+    "rank": 64,
+    "context_tokens": 768,
+    "question_tokens": 512,
+    "option_tokens": 384,
+    "max_score_levels": 10,
+    "encoder": "lexical"
+  },
+  "device": "cpu",
+  "test": {
+    "choice": {
+      "ambiguous": {
+        "examples": 500,
+        "top1": 1.0,
+        "top3": 1.0,
+        "nll": 0.0013400478073181147,
+        "brier": 1.4425067990137153e-05,
+        "ece": 0.004543236255645788,
+        "mean_confidence": 0.9954567637443542,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.6": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.7": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.8": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.9": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.996,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "clear": {
+        "examples": 500,
+        "top1": 0.216,
+        "top3": 0.858,
+        "nll": 2.8801947018206118,
+        "brier": 1.2234952848404645,
+        "ece": 0.5124043902158737,
+        "mean_confidence": 0.5908172272443771,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 0.578,
+            "accuracy": 0.05190311418685121,
+            "risk": 0.9480968858131488
+          },
+          "0.6": {
+            "coverage": 0.478,
+            "accuracy": 0.012552301255230125,
+            "risk": 0.9874476987447699
+          },
+          "0.7": {
+            "coverage": 0.382,
+            "accuracy": 0.0,
+            "risk": 1.0
+          },
+          "0.8": {
+            "coverage": 0.298,
+            "accuracy": 0.0,
+            "risk": 1.0
+          },
+          "0.9": {
+            "coverage": 0.216,
+            "accuracy": 0.0,
+            "risk": 1.0
+          },
+          "0.95": {
+            "coverage": 0.156,
+            "accuracy": 0.0,
+            "risk": 1.0
+          }
+        }
+      },
+      "implicit": {
+        "examples": 500,
+        "top1": 0.804,
+        "top3": 0.996,
+        "nll": 0.6858242594897747,
+        "brier": 0.3395305812680163,
+        "ece": 0.3316290504932404,
+        "mean_confidence": 0.4723709495067596,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 0.426,
+            "accuracy": 0.9154929577464789,
+            "risk": 0.08450704225352113
+          },
+          "0.6": {
+            "coverage": 0.232,
+            "accuracy": 0.9482758620689655,
+            "risk": 0.051724137931034475
+          },
+          "0.7": {
+            "coverage": 0.096,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.8": {
+            "coverage": 0.038,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.9": {
+            "coverage": 0.002,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.0,
+            "accuracy": 0.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "irrelevant_noise": {
+        "examples": 500,
+        "top1": 0.39,
+        "top3": 0.878,
+        "nll": 1.8895534236729146,
+        "brier": 0.9101415034532547,
+        "ece": 0.3383710745573044,
+        "mean_confidence": 0.5218462034463882,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 0.508,
+            "accuracy": 0.27165354330708663,
+            "risk": 0.7283464566929134
+          },
+          "0.6": {
+            "coverage": 0.366,
+            "accuracy": 0.15846994535519127,
+            "risk": 0.8415300546448088
+          },
+          "0.7": {
+            "coverage": 0.246,
+            "accuracy": 0.04065040650406504,
+            "risk": 0.959349593495935
+          },
+          "0.8": {
+            "coverage": 0.202,
+            "accuracy": 0.009900990099009901,
+            "risk": 0.9900990099009901
+          },
+          "0.9": {
+            "coverage": 0.104,
+            "accuracy": 0.0,
+            "risk": 1.0
+          },
+          "0.95": {
+            "coverage": 0.052,
+            "accuracy": 0.0,
+            "risk": 1.0
+          }
+        }
+      },
+      "prompt_injection": {
+        "examples": 500,
+        "top1": 1.0,
+        "top3": 1.0,
+        "nll": 0.00034761024575277586,
+        "brier": 9.663951976355032e-07,
+        "ece": 0.0014133772850036808,
+        "mean_confidence": 0.9985866227149963,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.6": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.7": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.8": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.9": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "technical": {
+        "examples": 500,
+        "top1": 0.022,
+        "top3": 0.706,
+        "nll": 4.815325330078601,
+        "brier": 1.6909976611733437,
+        "ece": 0.7940947004556655,
+        "mean_confidence": 0.8113562172651291,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 0.886,
+            "accuracy": 0.002257336343115124,
+            "risk": 0.9977426636568849
+          },
+          "0.6": {
+            "coverage": 0.834,
+            "accuracy": 0.0,
+            "risk": 1.0
+          },
+          "0.7": {
+            "coverage": 0.774,
+            "accuracy": 0.0,
+            "risk": 1.0
+          },
+          "0.8": {
+            "coverage": 0.636,
+            "accuracy": 0.0,
+            "risk": 1.0
+          },
+          "0.9": {
+            "coverage": 0.472,
+            "accuracy": 0.0,
+            "risk": 1.0
+          },
+          "0.95": {
+            "coverage": 0.346,
+            "accuracy": 0.0,
+            "risk": 1.0
+          }
+        }
+      }
+    },
+    "score": {
+      "ambiguous": {
+        "examples": 500,
+        "exact_accuracy": 0.78,
+        "within_one": 0.716,
+        "mae": 0.6428694095026003,
+        "nll": 0.452216219709022,
+        "brier": 0.2658794823952003,
+        "ece_within_one": 0.11358664560317994,
+        "mean_confidence": 0.684704021692276,
+        "coverage_risk_within_one": {
+          "0.5": {
+            "coverage": 0.71,
+            "accuracy": 0.9295774647887324,
+            "risk": 0.07042253521126762
+          },
+          "0.6": {
+            "coverage": 0.664,
+            "accuracy": 0.9608433734939759,
+            "risk": 0.03915662650602414
+          },
+          "0.7": {
+            "coverage": 0.588,
+            "accuracy": 0.9795918367346939,
+            "risk": 0.020408163265306145
+          },
+          "0.8": {
+            "coverage": 0.488,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.9": {
+            "coverage": 0.35,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.202,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "clear": {
+        "examples": 500,
+        "exact_accuracy": 0.96,
+        "within_one": 0.97,
+        "mae": 0.20256355417560554,
+        "nll": 0.20913594162114896,
+        "brier": 0.09849845422718556,
+        "ece_within_one": 0.2641830106973648,
+        "mean_confidence": 0.7074108339548111,
+        "coverage_risk_within_one": {
+          "0.5": {
+            "coverage": 0.704,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.6": {
+            "coverage": 0.638,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.7": {
+            "coverage": 0.596,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.8": {
+            "coverage": 0.516,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.9": {
+            "coverage": 0.386,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.248,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "implicit": {
+        "examples": 500,
+        "exact_accuracy": 0.75,
+        "within_one": 0.75,
+        "mae": 0.7306615509259136,
+        "nll": 1.1349455152924657,
+        "brier": 0.46983699993516226,
+        "ece_within_one": 0.21179033899307254,
+        "mean_confidence": 0.9617903389930725,
+        "coverage_risk_within_one": {
+          "0.5": {
+            "coverage": 0.992,
+            "accuracy": 0.7560483870967742,
+            "risk": 0.24395161290322576
+          },
+          "0.6": {
+            "coverage": 0.986,
+            "accuracy": 0.7606490872210954,
+            "risk": 0.23935091277890463
+          },
+          "0.7": {
+            "coverage": 0.976,
+            "accuracy": 0.7684426229508197,
+            "risk": 0.23155737704918034
+          },
+          "0.8": {
+            "coverage": 0.94,
+            "accuracy": 0.7978723404255319,
+            "risk": 0.2021276595744681
+          },
+          "0.9": {
+            "coverage": 0.88,
+            "accuracy": 0.8522727272727273,
+            "risk": 0.1477272727272727
+          },
+          "0.95": {
+            "coverage": 0.81,
+            "accuracy": 0.9234567901234568,
+            "risk": 0.07654320987654317
+          }
+        }
+      },
+      "irrelevant_noise": {
+        "examples": 500,
+        "exact_accuracy": 0.754,
+        "within_one": 0.74,
+        "mae": 0.6302584964415874,
+        "nll": 0.5683571458993975,
+        "brier": 0.3235451294304049,
+        "ece_within_one": 0.09937486994266513,
+        "mean_confidence": 0.8001766823530198,
+        "coverage_risk_within_one": {
+          "0.5": {
+            "coverage": 0.818,
+            "accuracy": 0.8753056234718827,
+            "risk": 0.12469437652811732
+          },
+          "0.6": {
+            "coverage": 0.774,
+            "accuracy": 0.9147286821705426,
+            "risk": 0.0852713178294574
+          },
+          "0.7": {
+            "coverage": 0.738,
+            "accuracy": 0.943089430894309,
+            "risk": 0.05691056910569103
+          },
+          "0.8": {
+            "coverage": 0.694,
+            "accuracy": 0.9855907780979827,
+            "risk": 0.014409221902017322
+          },
+          "0.9": {
+            "coverage": 0.612,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.478,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "prompt_injection": {
+        "examples": 500,
+        "exact_accuracy": 0.848,
+        "within_one": 0.98,
+        "mae": 0.2715036387266591,
+        "nll": 0.30937238124292343,
+        "brier": 0.17347571837036957,
+        "ece_within_one": 0.29192872428894046,
+        "mean_confidence": 0.6880712757110595,
+        "coverage_risk_within_one": {
+          "0.5": {
+            "coverage": 0.698,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.6": {
+            "coverage": 0.65,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.7": {
+            "coverage": 0.614,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.8": {
+            "coverage": 0.526,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.9": {
+            "coverage": 0.37,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.202,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "technical": {
+        "examples": 500,
+        "exact_accuracy": 0.932,
+        "within_one": 0.906,
+        "mae": 0.31525365204829725,
+        "nll": 0.31702756312617564,
+        "brier": 0.13480721952999603,
+        "ece_within_one": 0.23787485241889955,
+        "mean_confidence": 0.6759723320007324,
+        "coverage_risk_within_one": {
+          "0.5": {
+            "coverage": 0.688,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.6": {
+            "coverage": 0.602,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.7": {
+            "coverage": 0.532,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.8": {
+            "coverage": 0.45,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.9": {
+            "coverage": 0.28,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.156,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      }
+    },
+    "noul": {
+      "ambiguous": {
+        "examples": 4500,
+        "accuracy": 0.9324444444444444,
+        "brier": 0.07438257577162302,
+        "log_loss": 0.2796030365685001,
+        "auroc": 0.9250134153846153,
+        "ece": 0.18894586808151667,
+        "mean_confidence": 0.7568833611938689,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 0.8511111111111112,
+            "accuracy": 0.9357702349869451,
+            "risk": 0.06422976501305488
+          },
+          "0.6": {
+            "coverage": 0.782,
+            "accuracy": 0.9374822392725206,
+            "risk": 0.06251776072747939
+          },
+          "0.7": {
+            "coverage": 0.6824444444444444,
+            "accuracy": 0.9420384239661348,
+            "risk": 0.0579615760338652
+          },
+          "0.8": {
+            "coverage": 0.5408888888888889,
+            "accuracy": 0.9465899753492194,
+            "risk": 0.053410024650780596
+          },
+          "0.9": {
+            "coverage": 0.4111111111111111,
+            "accuracy": 0.94,
+            "risk": 0.06000000000000005
+          },
+          "0.95": {
+            "coverage": 0.2728888888888889,
+            "accuracy": 0.987785016286645,
+            "risk": 0.012214983713355054
+          }
+        }
+      },
+      "clear": {
+        "examples": 4500,
+        "accuracy": 0.7944444444444444,
+        "brier": 0.1047913682653226,
+        "log_loss": 0.3146292363697042,
+        "auroc": 0.9860522,
+        "ece": 0.13540197877089183,
+        "mean_confidence": 0.6881941112544802,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 0.7293333333333333,
+            "accuracy": 0.9753199268738574,
+            "risk": 0.02468007312614262
+          },
+          "0.6": {
+            "coverage": 0.6471111111111111,
+            "accuracy": 0.998282967032967,
+            "risk": 0.001717032967032961
+          },
+          "0.7": {
+            "coverage": 0.5815555555555556,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.8": {
+            "coverage": 0.5308888888888889,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.9": {
+            "coverage": 0.33644444444444443,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.08466666666666667,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "implicit": {
+        "examples": 4500,
+        "accuracy": 0.7864444444444444,
+        "brier": 0.12626288923903162,
+        "log_loss": 0.37818755498135254,
+        "auroc": 0.9510929040247678,
+        "ece": 0.1424542837937673,
+        "mean_confidence": 0.6723257314364115,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 0.7224444444444444,
+            "accuracy": 0.9403260535219933,
+            "risk": 0.05967394647800672
+          },
+          "0.6": {
+            "coverage": 0.652,
+            "accuracy": 0.9567143830947512,
+            "risk": 0.04328561690524879
+          },
+          "0.7": {
+            "coverage": 0.6002222222222222,
+            "accuracy": 0.953720844131803,
+            "risk": 0.046279155868196975
+          },
+          "0.8": {
+            "coverage": 0.5013333333333333,
+            "accuracy": 0.9556737588652482,
+            "risk": 0.04432624113475181
+          },
+          "0.9": {
+            "coverage": 0.32,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.09844444444444445,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "irrelevant_noise": {
+        "examples": 4500,
+        "accuracy": 0.7984444444444444,
+        "brier": 0.1132919821651465,
+        "log_loss": 0.3496349944844842,
+        "auroc": 0.9527706749226006,
+        "ece": 0.1583538178735309,
+        "mean_confidence": 0.6400906265709135,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 0.6851111111111111,
+            "accuracy": 0.9581576386636393,
+            "risk": 0.041842361336360656
+          },
+          "0.6": {
+            "coverage": 0.6548888888888889,
+            "accuracy": 0.9575839837122497,
+            "risk": 0.04241601628775027
+          },
+          "0.7": {
+            "coverage": 0.5942222222222222,
+            "accuracy": 0.9551234106207929,
+            "risk": 0.04487658937920713
+          },
+          "0.8": {
+            "coverage": 0.478,
+            "accuracy": 0.9781496978149697,
+            "risk": 0.021850302185030257
+          },
+          "0.9": {
+            "coverage": 0.25955555555555554,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.051111111111111114,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "prompt_injection": {
+        "examples": 4500,
+        "accuracy": 0.76,
+        "brier": 0.18268096389996613,
+        "log_loss": 0.6044677802485724,
+        "auroc": 0.745935,
+        "ece": 0.23215032692750298,
+        "mean_confidence": 0.6460000226630105,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 0.6826666666666666,
+            "accuracy": 0.8372395833333334,
+            "risk": 0.16276041666666663
+          },
+          "0.6": {
+            "coverage": 0.6424444444444445,
+            "accuracy": 0.827049463853338,
+            "risk": 0.172950536146662
+          },
+          "0.7": {
+            "coverage": 0.5802222222222222,
+            "accuracy": 0.8085024894676369,
+            "risk": 0.19149751053236308
+          },
+          "0.8": {
+            "coverage": 0.4731111111111111,
+            "accuracy": 0.765147956787224,
+            "risk": 0.23485204321277597
+          },
+          "0.9": {
+            "coverage": 0.2437777777777778,
+            "accuracy": 0.7219690063810392,
+            "risk": 0.2780309936189608
+          },
+          "0.95": {
+            "coverage": 0.00022222222222222223,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      },
+      "technical": {
+        "examples": 4500,
+        "accuracy": 0.8424444444444444,
+        "brier": 0.08595101388763093,
+        "log_loss": 0.2799344472338756,
+        "auroc": 0.9856814,
+        "ece": 0.20832962559329135,
+        "mean_confidence": 0.6341148188511531,
+        "coverage_risk": {
+          "0.5": {
+            "coverage": 0.6777777777777778,
+            "accuracy": 0.9996721311475409,
+            "risk": 0.0003278688524590567
+          },
+          "0.6": {
+            "coverage": 0.6553333333333333,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.7": {
+            "coverage": 0.6031111111111112,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.8": {
+            "coverage": 0.46444444444444444,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.9": {
+            "coverage": 0.25755555555555554,
+            "accuracy": 1.0,
+            "risk": 0.0
+          },
+          "0.95": {
+            "coverage": 0.03155555555555556,
+            "accuracy": 1.0,
+            "risk": 0.0
+          }
+        }
+      }
+    }
+  }
+}
