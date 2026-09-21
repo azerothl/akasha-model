@@ -15,7 +15,7 @@ import torch
 import vizdoom as vzd
 from PIL import Image
 
-from jevlike.vision import DoomScorerV2, benchmark, observation, observation_tensor
+from akasha_model.vision import DoomScorerV2, benchmark, observation, observation_tensor
 from environment import TICS_PER_ACTION, TICS_PER_SECOND, action_vector_for_game, make_game
 
 

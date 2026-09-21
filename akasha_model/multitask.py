@@ -1,9 +1,7 @@
 """Shared-context multi-question scorer.
 
-The model shares a small text encoder across all questions in a decision
-request, then dispatches to independent Choice, Score and Noul heads.  This is
-an executable local approximation of Jev's public contract; it is not a claim
-about TypeSafe's private architecture.
+The model shares a text encoder across all questions in a decision request,
+then dispatches to independent Choice, Score and Noul heads.
 """
 
 from __future__ import annotations
@@ -72,6 +70,11 @@ def _question(payload: dict[str, Any]) -> dict[str, Any]:
         # Store normalized model text so collators do not need to understand
         # every option metadata field again.
         result["options"] = [spec.model_text() for spec in specs]
+        result["option_specs"] = [
+            {"name": spec.name, "description": spec.description,
+             "not_for": list(spec.not_for), "examples": list(spec.examples)}
+            for spec in specs
+        ]
         ChoiceQuestion(question_id, instructions, tuple(specs))
     elif kind == "score":
         levels = payload.get("levels")
@@ -108,6 +111,14 @@ def _question(payload: dict[str, Any]) -> dict[str, Any]:
     result["id"] = question_id
     result["instructions"] = instructions
     result["label"] = int(result["label"])
+    target = payload.get("target")
+    if target is not None:
+        if not isinstance(target, list) or not target:
+            raise ValueError("target must be a non-empty list of probabilities")
+        values = [float(item) for item in target]
+        if any(value < 0 for value in values):
+            raise ValueError("target probabilities must be non-negative")
+        result["target"] = values
     return result
 
 

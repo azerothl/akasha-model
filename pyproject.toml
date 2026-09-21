@@ -3,9 +3,9 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jevlike"
-version = "0.1.0"
-description = "Train a one-pass scorer over a variable list of text options."
+name = "akasha-model"
+version = "0.2.0"
+description = "One-pass typed decision model for Akasha OS: Choice, Score and Noul."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -15,6 +15,7 @@ dependencies = ["numpy>=1.26", "torch>=2.2"]
 
 [project.optional-dependencies]
 transformers = ["transformers>=4.45"]
+eval = ["datasets>=3"]
 dev = ["pytest>=8"]
 games = [
   "chess>=1.11",
@@ -25,19 +26,21 @@ games = [
 ]
 
 [project.scripts]
-jevlike-data = "jevlike.data:main"
-jevlike-train = "jevlike.train:main"
-jevlike-eval = "jevlike.eval:main"
-jevlike-predict = "jevlike.predict:main"
-jevlike-calibrate = "jevlike.calibration:main"
-jevlike-ensemble-eval = "jevlike.ensemble:main"
-jevlike-ensemble-predict = "jevlike.ensemble:predict_main"
-jevlike-multitask-train = "jevlike.multitask_train:main"
-jevlike-multitask-eval = "jevlike.multitask_eval:main"
-jevlike-multitask-calibrate = "jevlike.multitask_calibrate:main"
+akasha-data = "akasha_model.data:main"
+akasha-train = "akasha_model.train:main"
+akasha-eval = "akasha_model.eval:main"
+akasha-predict = "akasha_model.predict:main"
+akasha-calibrate = "akasha_model.calibration:main"
+akasha-ensemble-eval = "akasha_model.ensemble:main"
+akasha-ensemble-predict = "akasha_model.ensemble:predict_main"
+akasha-multitask-train = "akasha_model.multitask_train:main"
+akasha-multitask-eval = "akasha_model.multitask_eval:main"
+akasha-multitask-calibrate = "akasha_model.multitask_calibrate:main"
+akasha-rlcd-train = "akasha_model.rlcd:main"
+akasha-typed-eval = "akasha_model.typed_decisions:main"
 
 [tool.setuptools.packages.find]
-include = ["jevlike*"]
+include = ["akasha_model*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

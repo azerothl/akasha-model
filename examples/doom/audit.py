@@ -11,7 +11,7 @@ import numpy as np
 import torch
 
 from diagnostics import correlation, enemy_observation, kl
-from jevlike.vision import DoomScorerV2, PlainConvPolicy, benchmark, observation, observation_tensor
+from akasha_model.vision import DoomScorerV2, PlainConvPolicy, benchmark, observation, observation_tensor
 from environment import DEFEND_ACTIONS, TICS_PER_ACTION, action_vector_for_game, make_game
 
 

@@ -1,20 +1,25 @@
 import torch
 from torch.nn import functional as F
 
-from jevlike.data import ByteCollator, synthetic_example
-from jevlike.model import TinyScorer
-from jevlike.calibration import fit_temperature
-from jevlike.train import brier_loss, training_loss
-from jevlike.data import validate
-from jevlike.primitives import (
+from akasha_model.data import ByteCollator, synthetic_example
+from akasha_model.model import TinyScorer
+from akasha_model.calibration import fit_temperature
+from akasha_model.train import brier_loss, training_loss
+from akasha_model.data import validate
+from akasha_model.decision import ByteTokenizer, DecisionModel, MaskCollator, TinyEncoder
+from akasha_model.primitives import (
     ChoiceQuestion, NoulQuestion, OptionSpec, ScoreLevel, ScoreQuestion,
     choice_result, noul_result, score_result,
 )
-from jevlike.multitask import (
+from akasha_model.multitask import (
     MultiQuestionCollator, MultiQuestionTinyScorer, validate_multi, multitask_loss,
 )
-from jevlike.multitask_eval import _binary_auc, _ece
-from jevlike.tool_calling import ToolCallPlanner, ToolSpec
+from akasha_model.multitask_eval import _binary_auc, _ece
+from akasha_model.rewards import proper_reward
+from akasha_model.rlcd import grpo_loss
+from akasha_model.sequence import QTYPES, build_sequence
+from akasha_model.tool_calling import ToolCallPlanner, ToolSpec
+from akasha_model.typed_decisions import convert_typed_row
 
 
 def test_tiny_scorer_learns_and_normalises():
@@ -232,3 +237,104 @@ def test_tool_call_planner_abstains_on_weak_choice():
         nouls={"authorized": 1.0, "sufficient_context": 1.0},
     )
     assert plan.status == "abstain"
+
+
+def test_mask_sequence_places_a_marker_per_option():
+    tokenizer = ByteTokenizer()
+    question = {
+        "t": "choice", "ins": "Choose the route.",
+        "crit": {"deny": "Block the operation.", "allow": "Permit the operation."},
+    }
+    ids, markers = build_sequence(
+        tokenizer, "offline protected device", question,
+        max_len=128, head_max_len=64, option_max_len=16,
+    )
+    assert len(markers) == 2
+    assert all(ids[position] == tokenizer.mask_token_id for position in markers)
+
+
+def test_proper_reward_prefers_the_true_distribution():
+    mask = torch.ones(1, 2, dtype=torch.bool)
+    target = torch.tensor([[1.0, 0.0]])
+    qtype = torch.tensor([QTYPES["choice"]])
+    better = proper_reward(torch.tensor([[0.9, 0.1]]), target, qtype, mask)
+    worse = proper_reward(torch.tensor([[0.1, 0.9]]), target, qtype, mask)
+    assert float(better) > float(worse)
+
+
+def test_mask_rlcd_learns_on_a_tiny_encoder():
+    example = validate_multi({
+        "context": "Permit the operation on this protected device.",
+        "questions": [
+            {"id": "route", "type": "choice", "instructions": "Choose the route.",
+             "options": [{"name": "deny", "description": "Block the operation."},
+                         {"name": "allow", "description": "Permit the operation."}],
+             "label": 1},
+            {"id": "authorized", "type": "noul",
+             "instructions": "Is the operation authorized?", "label": 1},
+        ],
+    })
+    model = DecisionModel(
+        TinyEncoder(hidden_size=32, layers=1, heads=4, max_len=128, dropout=0.0),
+        head_layers=1, dropout=0.0,
+    )
+    batch = MaskCollator(ByteTokenizer(), 128, 64, 16, group_size=2)([example, example])
+    optimiser = torch.optim.Adam(model.parameters(), lr=0.02)
+
+    def current_loss():
+        return grpo_loss(
+            model(
+                batch["input_ids"], batch["attention_mask"],
+                batch["marker_pos"], batch["marker_mask"], batch["qtype"],
+            ),
+            batch, 0.5, 1.0, 1.0,
+        )
+
+    initial = float(current_loss()["total"].detach())
+    losses = None
+    for _ in range(25):
+        losses = current_loss()
+        optimiser.zero_grad(set_to_none=True)
+        losses["total"].backward()
+        optimiser.step()
+    assert losses is not None
+    assert torch.isfinite(losses["total"])
+    assert float(losses["total"].detach()) < initial
+
+
+def test_typed_decisions_row_keeps_soft_targets_and_official_keys():
+    row = convert_typed_row({
+        "id": "cs_000",
+        "workflow": "customer_service",
+        "state": {"message": "Please refund the duplicate charge."},
+        "questions": {
+            "department": {
+                "type": "choice",
+                "instructions": "Which department?",
+                "criteria": {"billing": "invoices", "technical": "bugs"},
+            },
+            "urgent": {
+                "type": "noul",
+                "instructions": "Is this urgent?",
+            },
+            "severity": {
+                "type": "score",
+                "instructions": "How severe?",
+                "criteria": ["low", "high"],
+            },
+        },
+        "gold": {
+            "department": {
+                "label": "billing",
+                "probabilities": {"billing": 0.8, "technical": 0.2},
+            },
+            "urgent": {"noul": 0.9, "label": "true"},
+            "severity": {"label": 1, "probabilities": {"0": 0.1, "1": 0.9}},
+        },
+    })
+    parsed = validate_multi(row)
+    assert parsed.questions[0]["label"] == 0
+    assert parsed.questions[0]["target"][0] == 0.8
+    assert parsed.questions[1]["target"][1] == 0.9
+    assert parsed.questions[2]["label"] == 1
+    assert row["workflow"] == "customer_service"

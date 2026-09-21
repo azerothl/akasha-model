@@ -11,9 +11,9 @@ import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
-from jevlike.data import JsonlDataset
-from jevlike.model import load_checkpoint, select_device
-from jevlike.train import move
+from akasha_model.data import JsonlDataset
+from akasha_model.model import load_checkpoint, select_device
+from akasha_model.train import move
 
 
 def ece(confidence, correct):

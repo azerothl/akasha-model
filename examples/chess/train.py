@@ -16,7 +16,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from jevlike.vision import TOTAL_OPTIONS, DoomScorerV2, observation_tensor  # noqa: E402
+from akasha_model.vision import TOTAL_OPTIONS, DoomScorerV2, observation_tensor  # noqa: E402
 
 import data  # noqa: E402
 

@@ -12,7 +12,7 @@ try:
     from scripts.generate_akasha_dataset import extract_inventory
 except ModuleNotFoundError:  # Direct execution: ``python scripts/foo.py``.
     from generate_akasha_dataset import extract_inventory
-from jevlike.multitask import validate_multi
+from akasha_model.multitask import validate_multi
 
 
 FORBIDDEN_KEYS = {"target_action", "required_for_candidate", "oracle_action", "stress_type", "variant", "source", "case_id", "label", "prompt_injection_signal"}

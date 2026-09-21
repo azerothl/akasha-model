@@ -2,7 +2,8 @@
 
 The source of truth is a local Akasha OS checkout. Action identifiers are
 extracted from Rust string constants and shipped module manifests; no action is
-invented by the generator. The JSONL rows keep JevLike's three-field schema.
+invented by the generator. The JSONL rows keep the three-field schema
+``context``, ``options``, ``label``.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 # Chess example
 
-This example teaches the package's screen policy to play chess with a game controller. It imports the same `jevlike.vision.DoomScorerV2` network as Doom: a small convolutional stem over the frame, 8 by 10 patches with fixed positions added to the attention keys, one attention read per controller option, and a softmax over the options. The network has one table of 12 option embeddings. Ids 0 to 6 are the Doom buttons and ids 7 to 11 are the chess keys: up, down, left, right and one pick-up/put-down button. Nothing tells the network which game it is playing except the frame.
+This example teaches the package's screen policy to play chess with a game controller. It imports the same `akasha_model.vision.DoomScorerV2` network as Doom: a small convolutional stem over the frame, 8 by 10 patches with fixed positions added to the attention keys, one attention read per controller option, and a softmax over the options. The network has one table of 12 option embeddings. Ids 0 to 6 are the Doom buttons and ids 7 to 11 are the chess keys: up, down, left, right and one pick-up/put-down button. Nothing tells the network which game it is playing except the frame.
 
 ![The board as the model sees it, scaled up](board.png)
 
@@ -21,7 +21,7 @@ uv pip install -e '.[dev,games]'
 # Install Stockfish with your platform's package manager and put it on PATH.
 ```
 
-Run the scripts from this directory. They import the shared network from the installed `jevlike` package.
+Run the scripts from this directory. They import the shared network from the installed `akasha_model` package.
 
 ```sh
 cd examples/chess

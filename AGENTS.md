@@ -1,8 +1,8 @@
 # AGENTS.md
 
-Jevlike is a small PyTorch package for one-pass choice models. The text model takes a context and a changing list of text options. The visual model takes a 160 by 120 screen with motion and a subset of one shared 12-entry controller table. Doom uses rows 0–6; chess uses rows 7–11.
+Akasha Model is a small PyTorch package for one-pass choice models. The text model takes a context and a changing list of typed options (`choice`, `score`, `noul`). The visual model takes a 160 by 120 screen with motion and a subset of one shared 12-entry controller table. Doom uses rows 0–6; chess uses rows 7–11.
 
-Keep the public package self-contained. Do not add machine-specific paths, private data, credentials, run logs or copyrighted audio. Keep downloaded datasets and generated runs out of git. Preserve the JSONL text format in the top-level README and the checkpoint fields used by the examples.
+Keep the public package self-contained. Do not add machine-specific paths, private data, credentials, run logs or copyrighted audio. Keep downloaded datasets and generated runs out of git. Preserve the JSONL text format in the top-level README and the checkpoint fields used by the examples. Jev may appear only as an external comparison, never in package, function or CLI names.
 
 ## Install and verify
 
@@ -17,9 +17,11 @@ PYTHONPATH=examples/doom pytest -q examples/doom/test_smoke.py
 
 The top-level README quickstart is the release test. Run it exactly before changing its commands. Core text code must keep working on CPU, MPS and CUDA. Game scripts are intentionally small and may need a new command-line device choice before using CUDA.
 
+The MASK+BERT path (`akasha_model.decision`, `akasha-rlcd-train`) trains the encoder. CPU tests use the tiny MASK encoder, not a Hub download. `ToolCallPlanner` and the Akasha OS anti-leakage splits stay in the loop: do not replace them with an implicit tool executor, and do not reshuffle official typed-decisions train/test splits.
+
 ## Doom
 
-The environment and seven-button mapping are in `examples/doom/environment.py`. The visual scorer is imported from `jevlike.vision`; do not copy it into the example.
+The environment and seven-button mapping are in `examples/doom/environment.py`. The visual scorer is imported from `akasha_model.vision`; do not copy it into the example.
 
 Training order:
 
@@ -63,3 +65,4 @@ Point your agent here and try your own RL; here is what has been tried and what 
 - Duplicating an attention read with identical weights did not help; symmetry-breaking noise still gave no clear gain.
 - A short 20-update joint imitation run largely erased chess. Use hundreds of updates, weight the chess side, and gate on held-out accuracy.
 - Log attention entropy during RL. If representations collapse again, distinguish an entropy-bonus problem from early-experience lock-in before trying a late-layer reset.
+- A frozen encoder plus cross-entropy is not RLCD. The MASK scorer plus `proper_reward` and GRPO option-order groups is the text training path to compare against published System 1 numbers.

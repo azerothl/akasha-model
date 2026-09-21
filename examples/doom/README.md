@@ -1,6 +1,6 @@
 # Doom example
 
-This example uses `jevlike.vision.DoomScorerV2` to choose a controller button from a game screen. It is the same visual model used by the chess example. One table holds 12 option vectors: seven Doom buttons and five chess keys.
+This example uses `akasha_model.vision.DoomScorerV2` to choose a controller button from a game screen. It is the same visual model used by the chess example. One table holds 12 option vectors: seven Doom buttons and five chess keys.
 
 The input is a 160 by 120 RGB frame plus one motion channel made from the previous frame. A small convolutional stem makes 80 image patches. Fixed two-dimensional positions are added to the attention keys. Each active controller option reads the patches once and receives one score. A softmax turns the seven Doom scores into probabilities.
 

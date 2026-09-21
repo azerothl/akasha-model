@@ -1,4 +1,4 @@
-"""Screen-dependent Jev-like scorer for ViZDoom."""
+"""Screen-dependent option scorer for ViZDoom."""
 
 from __future__ import annotations
 
@@ -8,8 +8,9 @@ import time
 import numpy as np
 import torch
 import torch.nn.functional as F
-from jevlike.model import AttentionHead
 from torch import nn
+
+from .model import AttentionHead
 
 
 DOOM_OPTION_IDS = tuple(range(7))

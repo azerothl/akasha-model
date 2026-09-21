@@ -1,8 +1,10 @@
-# Jevlike
+# Akasha Model
 
-Train a small model that chooses among a changing list of text options.
+Train a small one-pass model that chooses among a changing list of typed options.
 
-A Jev-like model takes a piece of text and a list of `N` text options. It returns one probability for each option. It does this in one pass instead of writing an answer word by word. [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) is TypeSafe's commercial model for this kind of task. TypeSafe has not published its design. This repository is an independent starter model with the same input and output shape.
+Akasha Model takes a piece of state (text or JSON) and a list of questions. Each question is `choice`, `score` or `noul`. It returns one probability distribution per question in a single forward pass, instead of writing an answer word by word.
+
+The public comparison for this shape of model is TypeSafe [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev). TypeSafe has not published its design. This repository is the decision scorer for Akasha OS: independent weights, independent training, and a deterministic tool-call planner that never executes side effects.
 
 ## Demo
 
@@ -24,18 +26,21 @@ Render the trace in the same visual layout. This writes a silent film because th
 examples/film/make-film.sh runs/doom-trace.json runs/doom-film.mp4 10
 ```
 
-The release includes the [Doom example](examples/doom/README.md), the [chess example](examples/chess/README.md), the single-game checkpoints and the shared 12-option checkpoint. Both games import the visual scorer from `jevlike.vision`; there is no second model copy in either example.
+The release includes the [Doom example](examples/doom/README.md), the [chess example](examples/chess/README.md), the single-game checkpoints and the shared 12-option checkpoint. Both games import the visual scorer from `akasha_model.vision`; there is no second model copy in either example.
 
 ## Architecture
 
-Each option becomes a query vector, which is a short list of numbers representing its text. The query assigns attention weights to the context tokens. Those weights make one context vector for that option. A shared dot product turns each option and context pair into one score. A softmax, which converts scores into probabilities that sum to one, runs across the options.
+The production text path encodes each question as one MASK-marker sequence:
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.svg">
-  <img src="docs/architecture.svg" alt="Each option queries the context, receives an attended context vector, and becomes one probability.">
-</picture>
+```
+[CLS] choice question: <instructions> [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] <state> [SEP]
+```
 
-The default encoder learns byte embeddings from scratch. An encoder is the part that turns text into vectors. The optional Hugging Face path uses a frozen pretrained encoder, whose existing weights stay fixed while the small scorer learns.
+A bidirectional encoder (tiny transformer, or a **trained** BERT such as `bert-base-uncased` / ModernBERT) reads the whole sequence. A shared scorer reads the hidden state at each `[MASK]` and returns one logit per option. `choice`, `score` and `noul` share that head; noul is the two-way pair `false` / `true`.
+
+The encoder is trained, not frozen. High-cardinality menus keep a separate `option_max_len` cap so labels stay distinguishable; raise `--head-max-len` when a question has dozens of options.
+
+A cheaper byte-encoder scorer remains available for CPU smoke tests and the original JSONL choice format.
 
 ## Data format
 
@@ -47,17 +52,16 @@ Use one JSON object per line:
 
 `label` is the zero-based index of the correct option. Each row may have a different number of options, with a minimum of two.
 
-For Jev-like semantic criteria, an option can also be an object. The old
-string format remains valid:
+An option can also be an object:
 
 ```json
 {"context":"The user asks for a webpage.","options":[{"name":"tool.request","description":"Use the network tool for an external fetch."},{"name":"skill.invoke","description":"Use an installed local workflow."}],"label":0}
 ```
 
-The package exposes three typed decision contracts in `jevlike.primitives`:
+The package exposes three typed decision contracts in `akasha_model.primitives`:
 
 ```python
-from jevlike import ChoiceQuestion, NoulQuestion, OptionSpec, ScoreLevel, ScoreQuestion
+from akasha_model import ChoiceQuestion, NoulQuestion, OptionSpec, ScoreLevel, ScoreQuestion
 
 choice = ChoiceQuestion(
     "route", "Choose the safest route.",
@@ -71,10 +75,7 @@ score = ScoreQuestion(
 noul = NoulQuestion("authorized", "Is the operation authorized?")
 ```
 
-These contracts are the first compatibility layer for the multi-primitive
-model. They validate bounded options, ordered score levels, probability
-distributions and explicit abstention thresholds. Authorization, side effects
-and workflow decisions remain application code rather than model output.
+These contracts validate bounded options, ordered score levels, probability distributions and explicit abstention thresholds. Authorization, side effects and workflow decisions remain application code rather than model output.
 
 ### Tool calling: planification, pas exécution
 
@@ -85,13 +86,13 @@ signaux binaires comme l’autorisation, la présence d’une capability ou la
 suffisance du contexte. L’application doit ensuite valider les arguments,
 les permissions et la confirmation humaine avant tout effet de bord.
 
-`jevlike.tool_calling.ToolCallPlanner` fournit cette frontière déterministe :
+`akasha_model.tool_calling.ToolCallPlanner` fournit cette frontière déterministe :
 il retourne un plan `ready`, `abstain` ou `blocked`, valide un sous-ensemble du
 schéma JSON des paramètres et ne lance jamais l’outil. Akasha-OS doit fournir
 son propre exécuteur après un plan `ready` et refaire ses contrôles finaux.
 
 ```python
-from jevlike import ToolCallPlanner, ToolSpec
+from akasha_model import ToolCallPlanner, ToolSpec
 
 spec = ToolSpec(
     "fs.read", "Lire un fichier",
@@ -114,30 +115,40 @@ if plan.status == "ready":
 
 The shared-context model accepts several atomic questions in one JSONL row.
 The encoder is shared, while `Choice`, `Score` and `Noul` have independent
-heads:
+heads on the byte path. The MASK+BERT path scores every type at `[MASK]`
+markers in one sequence.
 
 ```json
 {"context":{"request":"access a protected device","offline":true},"questions":[{"id":"route","type":"choice","instructions":"Choose the route.","options":[{"name":"deny","description":"Block the operation."},{"name":"allow","description":"Permit the operation."}],"label":0},{"id":"risk","type":"score","instructions":"Rate the risk.","levels":["low","high"],"label":1},{"id":"authorized","type":"noul","instructions":"Is it authorized?","criteria":{"true":"The user explicitly granted the capability.","false":"No explicit grant is present."},"label":0}]}
 ```
 
-Train it with the separate multi-question command:
+Train the byte multitask scorer:
 
 ```sh
-jevlike-multitask-train data/akasha_os_multi/train.jsonl \
+akasha-multitask-train data/akasha_os_multi/train.jsonl \
   --validation data/akasha_os_multi/validation.jsonl \
   --output runs/akasha-os-multitask.pt
+```
+
+Train the MASK encoder with RLCD (proper-scoring reward + GRPO group baseline) on the same leakage-audited splits. The tiny encoder is CPU-friendly; pass `--encoder hf --hf-model bert-base-uncased` to train BERT.
+
+```sh
+akasha-rlcd-train data/akasha_os_multi/train.jsonl \
+  --validation data/akasha_os_multi/validation.jsonl \
+  --encoder tiny --group-size 4 \
+  --output runs/akasha-rlcd.pt
 ```
 
 `label` is an option index for `Choice` and a level index for `Score`. Score
 levels are ordered descriptions, numbered internally from 0; they are not
 arbitrary numeric measurements. A `Noul` returns the probability that the
 condition in its instructions is true, with values near 0.5 representing
-uncertainty.
+uncertainty. Optional `target` arrays store soft gold distributions for RLCD.
 
 Evaluate the three heads separately on the held-out test and stress sets:
 
 ```powershell
-jevlike-multitask-eval `
+akasha-multitask-eval `
   runs\akasha_os_multi.pt `
   data\akasha_os_multi\test.jsonl `
   --stress data\akasha_os_multi\stress.jsonl `
@@ -163,23 +174,23 @@ uv venv
 source .venv/bin/activate
 uv pip install -e '.[dev]'
 
-jevlike-data synthetic --output data/synthetic
-jevlike-train data/synthetic/train.jsonl \
+akasha-data synthetic --output data/synthetic
+akasha-train data/synthetic/train.jsonl \
   --validation data/synthetic/validation.jsonl \
   --output runs/synthetic.pt
-jevlike-eval runs/synthetic.pt data/synthetic/test.jsonl
-jevlike-predict runs/synthetic.pt \
+akasha-eval runs/synthetic.pt data/synthetic/test.jsonl
+akasha-predict runs/synthetic.pt \
   --context "Choose the exact badge amber badger. Badge: amber badger." \
   --option "azure crane" \
   --option "amber badger" \
-   --option "gold heron"
+  --option "gold heron"
 ```
 
 At inference time, option descriptions can be supplied and the application can
 request abstention below a confidence threshold:
 
 ```sh
-jevlike-predict runs/synthetic.pt \
+akasha-predict runs/synthetic.pt \
   --context "The user asks to fetch a public webpage." \
   --option tool.request \
   --option skill.invoke \
@@ -195,17 +206,17 @@ The evaluation prints top-1 accuracy, which is the fraction of correct first cho
 Use a separate calibration split that was not used to train or select the model. Temperature scaling changes the sharpness of the probabilities without changing the ranking of the options:
 
 ```sh
-jevlike-calibrate runs/synthetic.pt data/synthetic/validation.jsonl \
+akasha-calibrate runs/synthetic.pt data/synthetic/validation.jsonl \
   --output runs/synthetic-calibrated.pt
-jevlike-eval runs/synthetic-calibrated.pt data/synthetic/test.jsonl
+akasha-eval runs/synthetic-calibrated.pt data/synthetic/test.jsonl
 ```
 
-The fitted temperature is stored in the checkpoint and applied automatically by `jevlike-predict` and `jevlike-eval`. Compare NLL, Brier score and ECE on the held-out test set before deciding whether calibration helped. Calibration improves the reliability of probabilities; it does not necessarily improve top-1 accuracy.
+The fitted temperature is stored in the checkpoint and applied automatically by `akasha-predict` and `akasha-eval`. Compare NLL, Brier score and ECE on the held-out test set before deciding whether calibration helped. Calibration improves the reliability of probabilities; it does not necessarily improve top-1 accuracy.
 
 Training can also include a calibration-aware objective. The default weight is zero, which keeps the original training behavior. A small positive weight adds the multiclass Brier score to the cross-entropy objective:
 
 ```sh
-jevlike-train data/synthetic/train.jsonl \
+akasha-train data/synthetic/train.jsonl \
   --validation data/synthetic/validation.jsonl \
   --output runs/synthetic-calibration-aware.pt \
   --calibration-weight 0.1
@@ -229,7 +240,7 @@ To probe robustness without contaminating training, derive an evaluation-only st
 python scripts/make_stress_eval.py \
   data/akasha_os_grouped/test.jsonl \
   data/akasha_os_grouped/stress.jsonl
-jevlike-eval runs/akasha_os_grouped/baseline.pt \
+akasha-eval runs/akasha_os_grouped/baseline.pt \
   data/akasha_os_grouped/stress.jsonl
 ```
 
@@ -240,7 +251,7 @@ The stress set contains ambiguous-context and irrelevant-noise variants. Its lab
 For uncertainty-sensitive decisions, train several checkpoints with different seeds and evaluate their agreement:
 
 ```sh
-jevlike-ensemble-eval \
+akasha-ensemble-eval \
   runs/akasha_os_ensemble/seed-11.pt \
   runs/akasha_os_ensemble/seed-23.pt \
   runs/akasha_os_ensemble/seed-37.pt \
@@ -252,7 +263,7 @@ The ensemble averages probabilities and reports the fraction of examples on whic
 Use the same policy at inference time:
 
 ```sh
-jevlike-ensemble-predict \
+akasha-ensemble-predict \
   runs/akasha_os_ensemble/seed-11.pt \
   runs/akasha_os_ensemble/seed-23.pt \
   runs/akasha_os_ensemble/seed-37.pt \
@@ -269,8 +280,8 @@ The command abstains when the ensemble disagrees or when its mean confidence is 
 1. Export train, validation and test JSONL files in the format above.
 2. Keep all options that the model will see at prediction time in each row.
 3. Split related records together. For example, keep all records for one customer or one target page in one split. This prevents near-duplicates from leaking into the test set.
-4. Run `jevlike-train` with your train and validation files.
-5. Run `jevlike-eval` once on the held-out test file. Held-out means the file was never used for training or model selection.
+4. Run `akasha-train` or `akasha-rlcd-train` with your train and validation files.
+5. Run `akasha-eval` once on the held-out test file. Held-out means the file was never used for training or model selection.
 
 The default byte encoder truncates context to 192 bytes and each option to 32 bytes. Raise `--context-tokens` or `--option-tokens` when your text needs more room. Training supports CPU, Apple MPS for a Mac GPU, and CUDA for an NVIDIA GPU through `--device`.
 
@@ -285,11 +296,11 @@ model packs and capability checks. It is a local synthetic benchmark, not a
 dump of Akasha OS telemetry.
 
 ```sh
-jevlike-data akasha-os --output data/akasha_os
-jevlike-train data/akasha_os/train.jsonl \
+akasha-data akasha-os --output data/akasha_os
+akasha-train data/akasha_os/train.jsonl \
   --validation data/akasha_os/validation.jsonl \
   --output runs/akasha-os.pt
-jevlike-eval runs/akasha-os.pt data/akasha_os/test.jsonl
+akasha-eval runs/akasha-os.pt data/akasha_os/test.jsonl
 ```
 
 Les splits sont groupés par famille de scénario par défaut : une famille
@@ -298,7 +309,7 @@ fichier. Pour un split plus fin, regroupe plutôt par famille et signal runtime
 (GPU, permissions, réseau, audit, etc.) :
 
 ```sh
-jevlike-data akasha-os --output data/akasha_os_context --split-by context
+akasha-data akasha-os --output data/akasha_os_context --split-by context
 ```
 
 Cela évite qu'une même situation de contexte ou une variante quasi identique
@@ -331,10 +342,11 @@ d'Akasha OS :
   --output data\akasha_os_multi `
   --seed 20260918 `
   --total 30000
-.venv\Scripts\python.exe -m jevlike.multitask_train `
+.venv\Scripts\python.exe -m akasha_model.rlcd `
   data\akasha_os_multi\train.jsonl `
   --validation data\akasha_os_multi\validation.jsonl `
-  --output runs\akasha_os_multi.pt
+  --encoder tiny `
+  --output runs\akasha_os_multi_rlcd.pt
 ```
 
 Cette version produit 24 000 lignes d'entraînement, 3 000 de validation,
@@ -342,24 +354,45 @@ Cette version produit 24 000 lignes d'entraînement, 3 000 de validation,
 des familles et de l'audit se trouve dans
 `reports/akasha_multitask_dataset_report.md`.
 
-## Use a frozen pretrained encoder
+## Compare on typed-decisions
 
-Install the optional dependency and name any compatible encoder from Hugging Face:
+[LocalLLaMA/typed-decisions](https://huggingface.co/datasets/LocalLLaMA/typed-decisions)
+is the public 2,000-decision benchmark used by Laya (0.766) and the published
+Jev 1.13.0 number (0.727). Official Hub train/test splits are kept as-is; this
+command does not regroup rows across those splits.
+
+```sh
+uv pip install -e '.[eval,transformers]'
+akasha-typed-eval --prepare data/typed_decisions
+akasha-typed-eval runs/akasha-rlcd.pt \
+  --data data/typed_decisions/test.jsonl \
+  --output reports/typed_decisions.json
+```
+
+The report prints accuracy, soft accuracy, Brier, ECE and score MAE next to
+those published comparison figures. A number here is agreement with a teacher
+model, not a claim of correctness, and it is not a substitute for the Akasha OS
+anti-leakage audit.
+
+## Use a trained BERT encoder
+
+Install the optional dependency and name any MASK-capable encoder from Hugging Face. Unlike the frozen-encoder choice scorer, RLCD updates the encoder weights.
 
 ```sh
 uv pip install -e '.[transformers]'
-jevlike-train data/synthetic/train.jsonl \
-  --validation data/synthetic/validation.jsonl \
-  --output runs/qwen-head.pt \
+akasha-rlcd-train data/akasha_os_multi/train.jsonl \
+  --validation data/akasha_os_multi/validation.jsonl \
+  --output runs/akasha-bert.pt \
   --encoder hf \
-  --hf-model Qwen/Qwen2.5-0.5B \
-  --rank 256 \
-  --batch-size 8
+  --hf-model bert-base-uncased \
+  --batch-size 4
 ```
 
-The checkpoint stores the trained scorer head and the encoder name. It does not copy the frozen encoder weights. Loading the checkpoint therefore needs access to the same Hugging Face model.
+`--hf-model answerdotai/ModernBERT-base` is the closer match to Laya's published
+checkpoints. The checkpoint stores the trained encoder and scorer. Loading it
+needs access to the same tokenizer name.
 
-`--rank` sets the width of the small scorer head. A wider head has more trainable weights and uses more memory.
+The older frozen-encoder choice path remains: `akasha-train --encoder hf`.
 
 ## Wikispeedia example
 
@@ -367,7 +400,7 @@ The checkpoint stores the trained scorer head and the encoder name. It does not 
 
 ```sh
 scripts/get_wikispeedia.sh
-jevlike-train data/wikispeedia/jsonl/train.jsonl \
+akasha-train data/wikispeedia/jsonl/train.jsonl \
   --validation data/wikispeedia/jsonl/validation.jsonl \
   --output runs/wikispeedia.pt
 ```
@@ -376,18 +409,19 @@ Cite Robert West and Jure Leskovec, *Human Wayfinding in Information Networks*, 
 
 ## What to expect
 
-In the experiments that led to this starter, the one-pass scorer reached about 98% accuracy on synthetic menus. On target-disjoint Wikispeedia next-click data, a frozen Qwen2.5-0.5B encoder plus the scorer reached 26%, against about 8% for shuffled and random-encoder controls. A small model trained from scratch on 40,000 clicks reached 29%. At eight options, one pass was about 100 times faster than a small decoder forced to write 400 tokens.
+In the experiments that led to the original starter, the one-pass scorer reached about 98% accuracy on synthetic menus. On target-disjoint Wikispeedia next-click data, a frozen Qwen2.5-0.5B encoder plus the scorer reached 26%, against about 8% for shuffled and random-encoder controls. A small model trained from scratch on 40,000 clicks reached 29%. At eight options, one pass was about 100 times faster than a small decoder forced to write 400 tokens.
 
-These numbers describe local experiments, not this quickstart run. We did not show equal quality with Jev or reproduce TypeSafe's private training method.
+These numbers describe local experiments, not this quickstart run. They are not a claim of parity with Jev.
 
 ## Limitations
 
-- This is a research starter, not a copy of Jev.
+- This is a research starter for Akasha OS, not a copy of any commercial System 1 API.
 - Accuracy depends on data quality, split quality and the encoder.
 - The byte encoder is cheap but weak on language meaning.
 - The pretrained path may download a large model and needs more memory.
 - One-pass scoring requires the complete option list before prediction.
 - The speed comparison used a small local decoder rather than a large commercial model.
+- High-cardinality questions still need enough `--head-max-len` tokens per option.
 
 ## Licence
 

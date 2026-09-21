@@ -1,4 +1,4 @@
-# Akasha OS v2 — dataset de décisions JevLike
+# Akasha OS v2 — dataset de décisions
 
 ## Résumé
 
@@ -10,7 +10,7 @@ actions réparties sur les préfixes `agent`, `canvas`, `mem`, `model`, `notes`,
 `tasks`, `device`, `media`, `module`, `cap`, `schedule`, `web`, etc. sont
 utilisées dans le dataset pour garder les menus de décision de taille réaliste.
 
-Chaque ligne conserve le schéma JevLike : `context`, `options`, `label`.
+Chaque ligne conserve le schéma `context` / `options` / `label`.
 `__abstain__` est une option normale et est la cible pour les demandes
 ambiguës, contradictoires, non autorisées, dangereuses ou hors distribution.
 
