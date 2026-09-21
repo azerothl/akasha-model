@@ -25,7 +25,7 @@ from PIL import Image
 import render
 from eval import SKILL, Game, Pool, load, opponent_move
 from keys import KEYS
-from jevlike.vision import benchmark, observation_tensor
+from akasha_model.vision import benchmark, observation_tensor
 
 DECISION_SECONDS = 4 / 35  # Doom's TICS_PER_ACTION / TICS_PER_SECOND
 

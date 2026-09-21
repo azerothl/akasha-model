@@ -15,7 +15,7 @@ import torch.nn.functional as F
 import vizdoom as vzd
 
 from diagnostics import enemy_observation
-from jevlike.vision import (DOOM_OPTION_IDS, TOTAL_OPTIONS, DoomScorerV2,
+from akasha_model.vision import (DOOM_OPTION_IDS, TOTAL_OPTIONS, DoomScorerV2,
                       attention_entropy_by_action, observation, observation_tensor)
 from environment import DEFEND_ACTIONS, TICS_PER_ACTION, action_vector_for_game, make_game
 from train_ppo import discounted_returns, shaped_reward

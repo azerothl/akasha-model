@@ -14,7 +14,7 @@ import torch
 import torch.nn.functional as F
 import vizdoom as vzd
 
-from jevlike.vision import DOOM_OPTION_IDS, TOTAL_OPTIONS, observation, observation_tensor
+from akasha_model.vision import DOOM_OPTION_IDS, TOTAL_OPTIONS, observation, observation_tensor
 from train_imitation import augment, expert_action
 from environment import DEFEND_ACTIONS, TICS_PER_ACTION, action_vector_for_game, make_game
 from train_joint_ppo import JOINT_ACTIONS, chess_frames, load_expanded

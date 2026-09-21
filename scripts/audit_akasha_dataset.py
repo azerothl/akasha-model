@@ -1,4 +1,4 @@
-"""Audit an abstention-aware Akasha OS JevLike dataset."""
+"""Audit an abstention-aware Akasha OS decision dataset."""
 
 from __future__ import annotations
 

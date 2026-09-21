@@ -26,7 +26,7 @@ import torch
 
 import keys  # noqa: E402
 import render  # noqa: E402
-from jevlike.vision import CHESS_OPTION_IDS, DoomScorerV2, observation_tensor  # noqa: E402
+from akasha_model.vision import CHESS_OPTION_IDS, DoomScorerV2, observation_tensor  # noqa: E402
 
 STOCKFISH = shutil.which("stockfish") or "stockfish"
 KEY_BUDGET = 40

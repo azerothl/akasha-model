@@ -1,4 +1,4 @@
-"""Typed decision primitives inspired by Jev's public API.
+"""Typed decision primitives for bounded Choice, Score and Noul questions.
 
 This module deliberately contains no model code.  It defines the stable
 contract between an application (Akasha-OS) and a probabilistic scorer.  A
@@ -151,8 +151,9 @@ class NoulResult:
 def _distribution_confidence(probabilities: dict[Any, float]) -> float:
     """Approximate concentration-based confidence.
 
-    Jev's exact confidence formula is private. Normalised entropy is a
-    transparent approximation that uses the whole distribution.
+    Normalised entropy is a transparent approximation that uses the whole
+    distribution. Published System 1 models use private formulas; this one
+    stays inspectable.
     """
     if len(probabilities) <= 1:
         return 1.0

@@ -15,6 +15,7 @@ from collections import Counter
 from pathlib import Path
 from random import Random
 
+from akasha_model.multitask import validate_multi
 from generate_akasha_dataset import ABSTAIN, _select_actions, extract_inventory, stable
 
 
@@ -180,7 +181,6 @@ def build_row(rng: Random, row_id: int, action: str, variant: str, actions: list
 
 
 def validate_files(output: Path) -> dict:
-    from jevlike.multitask import validate_multi
     report = {"counts": {}, "question_types": Counter(), "labels": {"choice": Counter(), "score": Counter(), "noul": Counter()}, "excluded": [], "leakage": {}}
     states: dict[str, set[str]] = {}
     questions: dict[str, set[str]] = {}
@@ -260,7 +260,7 @@ def generate(root: Path, output: Path, seed: int, total: int) -> dict:
         with (output / f"{split}.jsonl").open("w", encoding="utf-8") as handle:
             for value in values:
                 handle.write(json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n")
-        # Sidecars keep split-family provenance out of the JevLike input rows.
+        # Sidecars keep split-family provenance out of the model input rows.
         with (output / f"{split}.metadata.jsonl").open("w", encoding="utf-8") as handle:
             for value in metadata[split]:
                 handle.write(json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n")

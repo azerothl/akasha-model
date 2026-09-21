@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from environment import DOOM_ACTIONS
-from jevlike.vision import (
+from akasha_model.vision import (
     CHESS_OPTION_IDS,
     TOTAL_OPTIONS,
     DoomScorerV2,

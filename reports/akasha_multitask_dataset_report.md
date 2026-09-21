@@ -1,4 +1,4 @@
-# Akasha OS — dataset multitâche Jev-like
+# Akasha OS — dataset multitâche
 
 ## Provenance
 
@@ -74,7 +74,7 @@ La validation exécutée est :
 
 ```powershell
 .venv\Scripts\python.exe scripts\generate_akasha_multitask_dataset.py ...
-.venv\Scripts\python.exe -m jevlike.multitask_train `
+.venv\Scripts\python.exe -m akasha_model.multitask_train `
   data\akasha_os_multi\train.jsonl `
   --validation data\akasha_os_multi\validation.jsonl `
   --output runs\akasha_os_multi_smoke.pt `

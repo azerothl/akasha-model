@@ -12,7 +12,7 @@ import torch
 import torch.nn.functional as F
 import vizdoom as vzd
 
-from jevlike.vision import DoomScorerV2, observation, observation_tensor
+from akasha_model.vision import DoomScorerV2, observation, observation_tensor
 from train_imitation import augment, expert_action
 from environment import DEFEND_ACTIONS, TICS_PER_ACTION, action_vector_for_game, make_game
 

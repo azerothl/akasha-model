@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.dirname(fileURLToPath(import.meta.url));
 const require=createRequire(import.meta.url);
 const {chromium}=require('playwright');
-const out=path.resolve(root,process.argv[2]||'videos/jevre-doom-10s.mp4');
+const out=path.resolve(root,process.argv[2]||'videos/doom-10s.mp4');
 const browser=await chromium.launch({headless:true});
 try{
  const page=await browser.newPage({viewport:{width:1920,height:1080},deviceScaleFactor:1});

@@ -1,4 +1,4 @@
-# Akasha OS — dataset multitâche Jev-like v2
+# Akasha OS — dataset multitâche v2
 
 ## Provenance et reproductibilité
 
@@ -122,7 +122,7 @@ Artefacts :
 - `data/akasha_os_multi_v2/action_inventory.json` ;
 - `data/akasha_os_multi_v2/audit.json`.
 
-La validation attendue avec Jev-like est :
+La validation attendue avec Akasha Model est :
 
 ```powershell
 .venv\Scripts\python.exe -m pytest -q
