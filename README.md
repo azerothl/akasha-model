@@ -38,7 +38,7 @@ The production text path encodes each question as one MASK-marker sequence:
 
 A bidirectional encoder (tiny transformer, or a **trained** BERT such as `bert-base-uncased` / ModernBERT) reads the whole sequence. A shared scorer reads the hidden state at each `[MASK]` and returns one logit per option. `choice`, `score` and `noul` share that head; noul is the two-way pair `false` / `true`.
 
-The encoder is trained, not frozen. High-cardinality menus keep a separate `option_max_len` cap so labels stay distinguishable; raise `--head-max-len` when a question has dozens of options.
+The encoder is trained, not frozen. Options are written before the state, so a full option block can truncate the context: keep `--max-len` larger than `--head-max-len` (768 for the tiny encoder; **512 for `bert-base-uncased`**, which cannot index longer sequences). High-cardinality menus also keep `--option-max-len`; raise `--head-max-len` when a question has dozens of options.
 
 A cheaper byte-encoder scorer remains available for CPU smoke tests and the original JSONL choice format.
 
@@ -139,17 +139,25 @@ akasha-rlcd-train data/akasha_os_multi/train.jsonl \
   --output runs/akasha-rlcd.pt
 ```
 
+Akasha OS rows typically hold **one `choice`, one `score` and nine `noul`**. RLCD scores every question in the row, so noul can dominate the gradient. GRPO validation loss is not accuracy. Score a MASK checkpoint with `akasha-typed-eval` (not `akasha-multitask-eval`, which only loads the byte scorer):
+
+```sh
+akasha-typed-eval runs/akasha-rlcd.pt \
+  --data data/akasha_os_multi/test.jsonl \
+  --output reports/akasha_os_multi_rlcd.json
+```
+
 `label` is an option index for `Choice` and a level index for `Score`. Score
 levels are ordered descriptions, numbered internally from 0; they are not
 arbitrary numeric measurements. A `Noul` returns the probability that the
 condition in its instructions is true, with values near 0.5 representing
 uncertainty. Optional `target` arrays store soft gold distributions for RLCD.
 
-Evaluate the three heads separately on the held-out test and stress sets:
+Evaluate the **byte** multitask scorer on the held-out test and stress sets:
 
 ```powershell
 akasha-multitask-eval `
-  runs\akasha_os_multi.pt `
+  runs\akasha-os-multitask.pt `
   data\akasha_os_multi\test.jsonl `
   --stress data\akasha_os_multi\stress.jsonl `
   --output reports\akasha_os_multi_metrics.json
@@ -280,8 +288,8 @@ The command abstains when the ensemble disagrees or when its mean confidence is 
 1. Export train, validation and test JSONL files in the format above.
 2. Keep all options that the model will see at prediction time in each row.
 3. Split related records together. For example, keep all records for one customer or one target page in one split. This prevents near-duplicates from leaking into the test set.
-4. Run `akasha-train` or `akasha-rlcd-train` with your train and validation files.
-5. Run `akasha-eval` once on the held-out test file. Held-out means the file was never used for training or model selection.
+4. Run `akasha-train` (single-choice JSONL), `akasha-multitask-train` (byte Choice/Score/Noul) or `akasha-rlcd-train` (MASK+RLCD) with your train and validation files.
+5. Evaluate once on a held-out test file that was never used for training or model selection. Use `akasha-eval` for single-choice checkpoints, `akasha-multitask-eval` for the byte multitask scorer, and `akasha-typed-eval --data` for MASK/RLCD checkpoints.
 
 The default byte encoder truncates context to 192 bytes and each option to 32 bytes. Raise `--context-tokens` or `--option-tokens` when your text needs more room. Training supports CPU, Apple MPS for a Mac GPU, and CUDA for an NVIDIA GPU through `--device`.
 
@@ -347,24 +355,40 @@ d'Akasha OS :
   --validation data\akasha_os_multi\validation.jsonl `
   --encoder tiny `
   --output runs\akasha_os_multi_rlcd.pt
+.venv\Scripts\python.exe -m akasha_model.typed_decisions `
+  runs\akasha_os_multi_rlcd.pt `
+  --data data\akasha_os_multi\test.jsonl `
+  --output reports\akasha_os_multi_rlcd.json
 ```
 
 Cette version produit 24 000 lignes d'entraînement, 3 000 de validation,
-3 000 de test et 3 000 lignes `stress` séparées. Le détail de la provenance,
-des familles et de l'audit se trouve dans
-`reports/akasha_multitask_dataset_report.md`.
+3 000 de test et 3 000 lignes `stress` séparées. Chaque ligne a une Choice,
+une Score et neuf Noul. Le détail de la provenance, des familles et de
+l'audit se trouve dans `reports/akasha_multitask_dataset_report.md`.
 
 ## Compare on typed-decisions
 
 [LocalLLaMA/typed-decisions](https://huggingface.co/datasets/LocalLLaMA/typed-decisions)
 is the public 2,000-decision benchmark used by Laya (0.766) and the published
-Jev 1.13.0 number (0.727). Official Hub train/test splits are kept as-is; this
-command does not regroup rows across those splits.
+Jev 1.13.0 number (0.727). Official Hub splits are 1,200 train rows and 400
+test rows (2,000 test questions). They are kept as-is; this command does not
+regroup rows across those splits.
+
+A MASK checkpoint trained only on Akasha OS is a transfer run, not the
+published comparison. Train on the Hub train split, then score the Hub test
+split. The Hub has no validation file: use a subset of train for
+`--validation` if you need early stopping, and report test only with
+`akasha-typed-eval`.
 
 ```sh
 uv pip install -e '.[eval,transformers]'
 akasha-typed-eval --prepare data/typed_decisions
-akasha-typed-eval runs/akasha-rlcd.pt \
+akasha-rlcd-train data/typed_decisions/train.jsonl \
+  --validation data/typed_decisions/train.jsonl \
+  --encoder hf --hf-model bert-base-uncased \
+  --max-len 512 --batch-size 1 \
+  --output runs/akasha-typed.pt
+akasha-typed-eval runs/akasha-typed.pt \
   --data data/typed_decisions/test.jsonl \
   --output reports/typed_decisions.json
 ```
@@ -385,12 +409,16 @@ akasha-rlcd-train data/akasha_os_multi/train.jsonl \
   --output runs/akasha-bert.pt \
   --encoder hf \
   --hf-model bert-base-uncased \
-  --batch-size 4
+  --max-len 512 \
+  --batch-size 1
 ```
 
-`--hf-model answerdotai/ModernBERT-base` is the closer match to Laya's published
-checkpoints. The checkpoint stores the trained encoder and scorer. Loading it
-needs access to the same tokenizer name.
+`bert-base-uncased` position embeddings stop at 512 tokens; a larger `--max-len`
+warns and can index past the table. `--batch-size 4` at 768 tokens does not fit
+a 16 GB GPU with group-size 4. `--device auto` picks CUDA, MPS or CPU.
+`--hf-model answerdotai/ModernBERT-base` is the
+closer match to Laya's published checkpoints. The checkpoint stores the trained
+encoder and scorer. Loading it needs access to the same tokenizer name.
 
 The older frozen-encoder choice path remains: `akasha-train --encoder hf`.
 
@@ -421,7 +449,9 @@ These numbers describe local experiments, not this quickstart run. They are not 
 - The pretrained path may download a large model and needs more memory.
 - One-pass scoring requires the complete option list before prediction.
 - The speed comparison used a small local decoder rather than a large commercial model.
-- High-cardinality questions still need enough `--head-max-len` tokens per option.
+- High-cardinality questions still need enough `--head-max-len` tokens per option, and enough `--max-len` left for the state after the option block.
+- MASK/RLCD and byte-multitask checkpoints are different files. `akasha-multitask-eval` cannot load a MASK run; use `akasha-typed-eval`.
+- Noul-heavy multitask rows can leave `choice` near chance even when overall GRPO loss falls. Always report per-head accuracy.
 
 ## Licence
 
