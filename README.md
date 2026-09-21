@@ -77,25 +77,25 @@ noul = NoulQuestion("authorized", "Is the operation authorized?")
 
 These contracts validate bounded options, ordered score levels, probability distributions and explicit abstention thresholds. Authorization, side effects and workflow decisions remain application code rather than model output.
 
-### Tool calling: planification, pas exécution
+### Tool calling: planning, not execution
 
-Le modèle multitâche ne génère pas directement un appel de fonction JSON et
-ne possède aucun exécuteur d’outil. `Choice` sélectionne un outil dans un
-catalogue borné, `Score` estime un niveau de risque et `Noul` fournit des
-signaux binaires comme l’autorisation, la présence d’une capability ou la
-suffisance du contexte. L’application doit ensuite valider les arguments,
-les permissions et la confirmation humaine avant tout effet de bord.
+The multitask model does not emit a JSON function call and has no tool
+executor. `Choice` selects a tool from a bounded catalogue, `Score` estimates
+a risk level, and `Noul` supplies binary signals such as authorization,
+capability presence, or sufficient context. The application must still
+validate arguments, permissions and human confirmation before any side
+effect.
 
-`akasha_model.tool_calling.ToolCallPlanner` fournit cette frontière déterministe :
-il retourne un plan `ready`, `abstain` ou `blocked`, valide un sous-ensemble du
-schéma JSON des paramètres et ne lance jamais l’outil. Akasha-OS doit fournir
-son propre exécuteur après un plan `ready` et refaire ses contrôles finaux.
+`akasha_model.tool_calling.ToolCallPlanner` is that deterministic boundary:
+it returns a `ready`, `abstain` or `blocked` plan, validates a subset of the
+parameter JSON schema, and never runs the tool. Akasha OS must supply its
+own executor after a `ready` plan and repeat its final checks.
 
 ```python
 from akasha_model import ToolCallPlanner, ToolSpec
 
 spec = ToolSpec(
-    "fs.read", "Lire un fichier",
+    "fs.read", "Read a file",
     parameters={"type": "object", "required": ["path"],
                 "properties": {"path": {"type": "string"}},
                 "additionalProperties": False},
@@ -311,23 +311,24 @@ akasha-train data/akasha_os/train.jsonl \
 akasha-eval runs/akasha-os.pt data/akasha_os/test.jsonl
 ```
 
-Les splits sont groupés par famille de scénario par défaut : une famille
-(par exemple Canvas, mémoire ou périphérique) reste entièrement dans un seul
-fichier. Pour un split plus fin, regroupe plutôt par famille et signal runtime
-(GPU, permissions, réseau, audit, etc.) :
+Splits are grouped by scenario family by default: one family (for example
+Canvas, memory or device) stays entirely in a single file. For a finer
+split, group by family and runtime signal instead (GPU, permissions,
+network, audit, and so on):
 
 ```sh
 akasha-data akasha-os --output data/akasha_os_context --split-by context
 ```
 
-Cela évite qu'une même situation de contexte ou une variante quasi identique
-se retrouve à la fois dans l'entraînement et dans l'évaluation.
+That keeps the same context situation, or a near-duplicate variant, from
+appearing in both training and evaluation.
 
-Pour la version v2 dérivée du checkout source local, avec abstention et audit :
+For the v2 dataset derived from a local source checkout, with abstention and
+audit:
 
 ```powershell
 .venv\Scripts\python.exe scripts\generate_akasha_dataset.py `
-  --akasha-root <chemin-vers-akasha-os> `
+  --akasha-root <path-to-akasha-os> `
   --output data\akasha_os_v2 `
   --seed 20260918 `
   --total 30000
@@ -335,18 +336,17 @@ Pour la version v2 dérivée du checkout source local, avec abstention et audit 
   --input data\akasha_os_v2
 ```
 
-`stress.jsonl` est réservé à l'évaluation. Le rapport complet se trouve dans
+`stress.jsonl` is evaluation-only. The full report is in
 `reports/akasha_dataset_report.md`.
 
-### Akasha OS — dataset multitâche source-derived
+### Akasha OS — source-derived multitask dataset
 
-Pour entraîner séparément les têtes `Choice`, `Score` et `Noul` sur des
-scénarios dérivés des identifiants réellement présents dans le checkout local
-d'Akasha OS :
+To train the `Choice`, `Score` and `Noul` heads separately on scenarios
+derived from identifiers that actually exist in a local Akasha OS checkout:
 
 ```powershell
 .venv\Scripts\python.exe scripts\generate_akasha_multitask_dataset.py `
-  --akasha-root <chemin-vers-akasha-os> `
+  --akasha-root <path-to-akasha-os> `
   --output data\akasha_os_multi `
   --seed 20260918 `
   --total 30000
@@ -361,10 +361,10 @@ d'Akasha OS :
   --output reports\akasha_os_multi_rlcd.json
 ```
 
-Cette version produit 24 000 lignes d'entraînement, 3 000 de validation,
-3 000 de test et 3 000 lignes `stress` séparées. Chaque ligne a une Choice,
-une Score et neuf Noul. Le détail de la provenance, des familles et de
-l'audit se trouve dans `reports/akasha_multitask_dataset_report.md`.
+This version writes 24,000 training rows, 3,000 validation rows, 3,000 test
+rows and 3,000 separate `stress` rows. Each row has one Choice, one Score
+and nine Noul questions. Provenance, families and the audit are in
+`reports/akasha_multitask_dataset_report.md`.
 
 ## Compare on typed-decisions
 
@@ -453,6 +453,6 @@ These numbers describe local experiments, not this quickstart run. They are not 
 - MASK/RLCD and byte-multitask checkpoints are different files. `akasha-multitask-eval` cannot load a MASK run; use `akasha-typed-eval`.
 - Noul-heavy multitask rows can leave `choice` near chance even when overall GRPO loss falls. Always report per-head accuracy.
 
-## Licence
+## License
 
 Code is released under the [MIT License](LICENSE). Downloaded datasets and pretrained models keep their own terms.
