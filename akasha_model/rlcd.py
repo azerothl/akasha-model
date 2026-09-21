@@ -29,27 +29,54 @@ def reported_distribution(logits: torch.Tensor, mask: torch.Tensor) -> torch.Ten
     return torch.softmax(scores, dim=-1) * mask
 
 
+def _mean_by_type(
+    values: torch.Tensor, qtype: torch.Tensor, balance: bool,
+) -> torch.Tensor:
+    """Mean over rows, or the unweighted mean of per-type means (Choice/Score/Noul)."""
+    if not balance:
+        return values.mean()
+    parts = [
+        values[qtype == kind].mean()
+        for kind in (0, 1, 2)
+        if bool((qtype == kind).any())
+    ]
+    return torch.stack(parts).mean() if parts else values.mean()
+
+
+def _reward_by_type(reward: torch.Tensor, qtype: torch.Tensor) -> dict[str, torch.Tensor]:
+    names = {0: "choice", 1: "score", 2: "noul"}
+    stats: dict[str, torch.Tensor] = {}
+    for kind, name in names.items():
+        selected = reward[qtype == kind]
+        stats[f"reward_{name}"] = selected.mean() if selected.numel() else reward.new_zeros(())
+    return stats
+
+
 def grpo_loss(
     logits: torch.Tensor, batch: dict[str, torch.Tensor],
     spherical_weight: float, ranked_weight: float, policy_weight: float,
+    type_balance: bool = False,
 ) -> dict[str, torch.Tensor]:
     mask = batch["marker_mask"]
+    qtype = batch["qtype"]
     reported = reported_distribution(logits, mask)
     reward = proper_reward(
-        reported, batch["target"], batch["qtype"], mask,
+        reported, batch["target"], qtype, mask,
         spherical_weight=spherical_weight, ranked_weight=ranked_weight,
     )
     group_size = int(batch["group_size"].reshape(-1)[0])
     grouped = reward.view(-1, group_size)
     advantage = grouped - grouped.mean(dim=1, keepdim=True)
     log_prob = (batch["target"] * torch.log(reported.clamp_min(1e-12))).sum(-1)
-    policy = -(advantage.detach().reshape(-1) * log_prob).mean()
-    supervised = -reward.mean()
+    policy_terms = -(advantage.detach().reshape(-1) * log_prob)
+    policy = _mean_by_type(policy_terms, qtype, type_balance)
+    supervised = _mean_by_type(-reward, qtype, type_balance)
     return {
         "supervised": supervised,
         "policy": policy,
         "reward": reward.mean(),
         "total": supervised + policy_weight * policy,
+        **_reward_by_type(reward, qtype),
     }
 
 
@@ -67,6 +94,7 @@ def run_epoch(model, loader, device, optimiser, args) -> dict[str, float]:
             )
             losses = grpo_loss(
                 logits, batch, args.spherical_weight, args.ranked_weight, args.policy_weight,
+                type_balance=args.type_balance,
             )
         if training:
             optimiser.zero_grad(set_to_none=True)
@@ -117,6 +145,10 @@ def main() -> None:
     parser.add_argument("--spherical-weight", type=float, default=0.5)
     parser.add_argument("--ranked-weight", type=float, default=1.0)
     parser.add_argument("--policy-weight", type=float, default=1.0)
+    parser.add_argument(
+        "--type-balance", action="store_true",
+        help="average Choice/Score/Noul losses equally instead of by question count",
+    )
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--device", choices=("auto", "cpu", "mps", "cuda"), default="auto")
     parser.add_argument("--seed", type=int, default=7)
@@ -137,6 +169,8 @@ def main() -> None:
         "head_max_len": args.head_max_len,
         "option_max_len": args.option_max_len,
         "dropout": args.dropout,
+        "policy_weight": args.policy_weight,
+        "type_balance": args.type_balance,
         "temperature": [1.0, 1.0, 1.0],
     }
     if args.init:

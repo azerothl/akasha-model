@@ -302,6 +302,24 @@ def test_mask_rlcd_learns_on_a_tiny_encoder():
     assert float(losses["total"].detach()) < initial
 
 
+def test_type_balance_does_not_let_noul_drown_choice():
+    mask = torch.ones(10, 2, dtype=torch.bool)
+    target = torch.tensor([[1.0, 0.0]] * 10)
+    qtype = torch.tensor([0] + [2] * 9)
+    reported = torch.tensor([[0.1, 0.9]] + [[0.9, 0.1]] * 9)
+    logits = torch.log(reported)
+    batch = {
+        "marker_mask": mask,
+        "target": target,
+        "qtype": qtype,
+        "group_size": torch.tensor(1),
+    }
+    meaned = grpo_loss(logits, batch, 0.5, 1.0, 0.0, type_balance=False)
+    balanced = grpo_loss(logits, batch, 0.5, 1.0, 0.0, type_balance=True)
+    assert float(balanced["supervised"]) > float(meaned["supervised"])
+    assert float(balanced["reward_choice"]) < float(balanced["reward_noul"])
+
+
 def test_typed_decisions_row_keeps_soft_targets_and_official_keys():
     row = convert_typed_row({
         "id": "cs_000",
