@@ -19,6 +19,7 @@ from akasha_model.rewards import proper_reward
 from akasha_model.rlcd import grpo_loss
 from akasha_model.sequence import QTYPES, build_sequence
 from akasha_model.tool_calling import ToolCallPlanner, ToolSpec
+from akasha_model.gate import GateSignals, ToolProposal, evaluate_gate
 from akasha_model.typed_decisions import convert_typed_row
 
 
@@ -237,6 +238,53 @@ def test_tool_call_planner_abstains_on_weak_choice():
         nouls={"authorized": 1.0, "sufficient_context": 1.0},
     )
     assert plan.status == "abstain"
+
+
+def test_evaluate_gate_ready_abstain_and_blocked():
+    tools = {
+        "fs.read": ToolSpec(
+            "fs.read",
+            parameters={"type": "object", "required": ["path"],
+                        "properties": {"path": {"type": "string"}},
+                        "additionalProperties": False},
+            required_capability="workspace_access",
+        ),
+        "fs.delete": ToolSpec(
+            "fs.delete", irreversible=True, required_capability="workspace_access",
+        ),
+    }
+    ready = evaluate_gate(
+        tools,
+        ToolProposal("fs.read", {"path": "notes.txt"}),
+        GateSignals(
+            authorized=0.95, sufficient_context=0.9, capability_present=0.92,
+            confirmation_needed=0.05,
+        ),
+    )
+    assert ready.status == "ready"
+    assert ready.executable
+    assert ready.arguments == {"path": "notes.txt"}
+
+    abstain = evaluate_gate(
+        tools,
+        ToolProposal(
+            "fs.read",
+            choice_probabilities={"fs.read": 0.52, "fs.delete": 0.48},
+        ),
+        GateSignals(authorized=1.0, sufficient_context=1.0, capability_present=1.0),
+        planner=ToolCallPlanner(min_choice_probability=0.60),
+    )
+    assert abstain.status == "abstain"
+
+    blocked = evaluate_gate(
+        tools,
+        ToolProposal("fs.delete", {"path": "notes.txt"}),
+        GateSignals(
+            authorized=0.95, sufficient_context=0.95, capability_present=0.95,
+        ),
+    )
+    assert blocked.status == "blocked"
+    assert "confirmation" in blocked.reason
 
 
 def test_mask_sequence_places_a_marker_per_option():
