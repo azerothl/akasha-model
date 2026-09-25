@@ -19,7 +19,7 @@ from akasha_model.rewards import proper_reward
 from akasha_model.rlcd import grpo_loss
 from akasha_model.sequence import QTYPES, build_sequence
 from akasha_model.tool_calling import ToolCallPlanner, ToolSpec
-from akasha_model.typed_decisions import convert_typed_row
+from akasha_model.typed_decisions import convert_typed_row, evaluate_typed_records
 
 
 def test_tiny_scorer_learns_and_normalises():
@@ -302,6 +302,24 @@ def test_mask_rlcd_learns_on_a_tiny_encoder():
     assert float(losses["total"].detach()) < initial
 
 
+def test_type_balance_does_not_let_noul_drown_choice():
+    mask = torch.ones(10, 2, dtype=torch.bool)
+    target = torch.tensor([[1.0, 0.0]] * 10)
+    qtype = torch.tensor([0] + [2] * 9)
+    reported = torch.tensor([[0.1, 0.9]] + [[0.9, 0.1]] * 9)
+    logits = torch.log(reported)
+    batch = {
+        "marker_mask": mask,
+        "target": target,
+        "qtype": qtype,
+        "group_size": torch.tensor(1),
+    }
+    meaned = grpo_loss(logits, batch, 0.5, 1.0, 0.0, type_balance=False)
+    balanced = grpo_loss(logits, batch, 0.5, 1.0, 0.0, type_balance=True)
+    assert float(balanced["supervised"]) > float(meaned["supervised"])
+    assert float(balanced["reward_choice"]) < float(balanced["reward_noul"])
+
+
 def test_typed_decisions_row_keeps_soft_targets_and_official_keys():
     row = convert_typed_row({
         "id": "cs_000",
@@ -338,3 +356,49 @@ def test_typed_decisions_row_keeps_soft_targets_and_official_keys():
     assert parsed.questions[1]["target"][1] == 0.9
     assert parsed.questions[2]["label"] == 1
     assert row["workflow"] == "customer_service"
+
+
+def test_mask_target_modes_preserve_option_alignment():
+    example = validate_multi({
+        "context": "Choose the middle option.",
+        "questions": [{"id": "route", "type": "choice", "instructions": "Choose.",
+                       "options": ["first", "middle", "last"], "label": 1,
+                       "target": [0.2, 0.7, 0.1]}],
+    })
+    for mode, expected in (("provided", [0.2, 0.7, 0.1]),
+                           ("one_hot", [0.0, 1.0, 0.0])):
+        collator = MaskCollator(ByteTokenizer(), 128, 64, 16, group_size=4,
+                                seed=7, target_mode=mode)
+        batch = collator([example])
+        for index, order in enumerate(collator._orders(3, 0)):
+            aligned = torch.empty(3)
+            aligned[order] = batch["target"][index, :3]
+            assert torch.allclose(aligned, torch.tensor(expected))
+            assert int(batch["label"][index]) == order.index(1)
+            assert torch.isclose(batch["target"][index, :3].sum(), torch.tensor(1.0))
+
+
+def test_typed_eval_reports_soft_metrics_and_permutation_stability():
+    row = {
+        "context": "A state", "id": "state-1",
+        "questions": [{"id": "route", "type": "choice", "instructions": "Choose.",
+                       "options": ["first", "second", "third"], "label": 1,
+                       "target": [0.2, 0.7, 0.1]}],
+    }
+
+    class MarkerModel:
+        def eval(self):
+            return self
+
+        def __call__(self, input_ids, attention_mask, marker_pos, marker_mask, qtype):
+            return marker_pos.float().masked_fill(~marker_mask, -1e4) / 100
+
+    metrics, records = evaluate_typed_records(
+        MarkerModel(), ByteTokenizer(), [row], torch.device("cpu"),
+        128, 64, 16, batch_size=1, permutations=8,
+    )
+    assert len(records) == metrics["all"]["examples"] == 1
+    assert records[0]["row_index"] == 0
+    assert metrics["all"]["nll"] > 0
+    assert 0 <= metrics["all"]["ece_maxprob"] <= 1
+    assert 0 <= metrics["all"]["permutation_stability"]["top1_flip_rate"] <= 1
