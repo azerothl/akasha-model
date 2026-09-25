@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -133,19 +132,47 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def summarise_typed_records(records: list[dict[str, Any]], permutations: int = 1) -> dict[str, Any]:
+    """Aggregate question records while retaining the historical entropy ECE."""
+    result = {}
+    for name in ("all", "choice", "score", "noul"):
+        selected = [item for item in records if name == "all" or item["kind"] == name]
+        values = lambda key: [float(item[key]) for item in selected if key in item]
+        summary = {
+            "examples": len(selected),
+            "accuracy": _mean(values("correct")),
+            "label_accuracy": _mean(values("label_correct")),
+            "soft_accuracy": _mean(values("soft")),
+            "brier": _mean(values("brier")),
+            "ece": _ece(values("confidence"), values("correct")),
+            "nll": _mean(values("nll")),
+            "ece_maxprob": _ece(values("max_probability"), values("label_correct"), bins=15),
+            "score_mae": _mean(values("score_mae")) if values("score_mae") else None,
+        }
+        if permutations > 1:
+            summary["permutation_stability"] = {
+                "permutations": permutations,
+                "top1_flip_rate": _mean(values("top1_flip_rate")),
+                "mean_js_divergence": _mean(values("mean_js_divergence")),
+            }
+        result[name] = summary
+    return result
+
+
 @torch.no_grad()
-def evaluate_typed_rows(
+def evaluate_typed_records(
     model, tokenizer, rows: list[dict[str, Any]], device: torch.device,
     max_len: int, head_max_len: int, option_max_len: int, batch_size: int = 8,
-) -> dict[str, Any]:
-    collator = MaskCollator(tokenizer, max_len, head_max_len, option_max_len, group_size=1)
+    permutations: int = 1, seed: int = 7,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    if permutations < 1:
+        raise ValueError("permutations must be at least one")
+    collator = MaskCollator(
+        tokenizer, max_len, head_max_len, option_max_len,
+        group_size=permutations, seed=seed,
+    )
     examples = [validate_multi(row) for row in rows]
-    stores: dict[str, dict[str, list]] = {
-        "all": defaultdict(list),
-        "choice": defaultdict(list),
-        "score": defaultdict(list),
-        "noul": defaultdict(list),
-    }
+    records: list[dict[str, Any]] = []
     model.eval()
     for start in range(0, len(examples), batch_size):
         chunk = examples[start:start + batch_size]
@@ -160,47 +187,66 @@ def evaluate_typed_rows(
         reported = torch.softmax(
             logits.masked_fill(~batch["marker_mask"], torch.finfo(logits.dtype).min), -1,
         )
-        for index in range(reported.shape[0]):
-            mask = batch["marker_mask"][index]
-            count = int(mask.sum())
-            predicted = reported[index, :count].cpu().numpy()
-            target = batch["target"][index, :count].cpu().numpy()
-            qtype = int(batch["qtype"][index])
-            kind = {0: "choice", 1: "score", 2: "noul"}[qtype]
-            correct = int(predicted.argmax() == target.argmax())
-            soft = float((predicted * target).sum())
-            brier = float(((predicted - target) ** 2).sum())
-            record = {
-                "correct": correct,
-                "soft": soft,
-                "brier": brier,
-                "confidence": confidence_from_probs(predicted, count),
-            }
-            if kind == "score":
-                expected_pred = float(np.dot(predicted, np.arange(count)))
-                expected_gold = float(np.dot(target, np.arange(count)))
-                record["score_mae"] = abs(expected_pred - expected_gold)
-            stores["all"]["correct"].append(correct)
-            stores["all"]["soft"].append(soft)
-            stores["all"]["brier"].append(brier)
-            stores["all"]["confidence"].append(record["confidence"])
-            stores[kind]["correct"].append(correct)
-            stores[kind]["soft"].append(soft)
-            stores[kind]["brier"].append(brier)
-            stores[kind]["confidence"].append(record["confidence"])
-            if "score_mae" in record:
-                stores["all"]["score_mae"].append(record["score_mae"])
-                stores[kind]["score_mae"].append(record["score_mae"])
-    def summarise(values: dict[str, list]) -> dict[str, Any]:
-        return {
-            "examples": len(values.get("correct", [])),
-            "accuracy": _mean(values.get("correct", [])),
-            "soft_accuracy": _mean(values.get("soft", [])),
-            "brier": _mean(values.get("brier", [])),
-            "ece": _ece(values.get("confidence", []), values.get("correct", [])),
-            "score_mae": _mean(values.get("score_mae", [])) if values.get("score_mae") else None,
-        }
-    return {name: summarise(values) for name, values in stores.items()}
+        index = 0
+        for state_offset, example in enumerate(chunk):
+            for question in example.questions:
+                count = int(batch["marker_mask"][index].sum())
+                orderings = collator._orders(count, state_offset)
+                aligned = []
+                for order in orderings:
+                    probabilities = reported[index, :count].cpu().numpy()
+                    canonical = np.empty(count, dtype=np.float64)
+                    canonical[order] = probabilities
+                    aligned.append(canonical)
+                    index += 1
+                predicted = aligned[0]
+                target = batch["target"][index - permutations, :count].cpu().numpy()
+                qtype = int(batch["qtype"][index - permutations])
+                kind = {0: "choice", 1: "score", 2: "noul"}[qtype]
+                record = {
+                    "row_index": start + state_offset,
+                    "question_id": question["id"],
+                    "kind": kind,
+                    "correct": int(predicted.argmax() == target.argmax()),
+                    "label_correct": int(predicted.argmax() == int(batch["label"][index - permutations])),
+                    "soft": float((predicted * target).sum()),
+                    "brier": float(((predicted - target) ** 2).sum()),
+                    "nll": float(-(target * np.log(np.clip(predicted, 1e-12, 1))).sum()),
+                    "confidence": confidence_from_probs(predicted, count),
+                    "max_probability": float(predicted.max()),
+                }
+                if kind == "score":
+                    levels = np.arange(count)
+                    record["score_mae"] = abs(
+                        float(np.dot(predicted, levels) - np.dot(target, levels))
+                    )
+                if permutations > 1:
+                    distributions = np.stack(aligned)
+                    mean = distributions.mean(axis=0)
+                    record["top1_flip_rate"] = float(np.mean(
+                        distributions[1:].argmax(axis=1) != predicted.argmax()
+                    ))
+                    record["mean_js_divergence"] = float(np.mean(np.sum(
+                        distributions * (
+                            np.log(np.clip(distributions, 1e-12, 1))
+                            - np.log(np.clip(mean, 1e-12, 1))
+                        ), axis=1,
+                    )))
+                records.append(record)
+        if index != reported.shape[0]:
+            raise ValueError("permutation alignment did not consume the full batch")
+    return summarise_typed_records(records, permutations), records
+
+
+def evaluate_typed_rows(
+    model, tokenizer, rows: list[dict[str, Any]], device: torch.device,
+    max_len: int, head_max_len: int, option_max_len: int, batch_size: int = 8,
+    permutations: int = 1,
+) -> dict[str, Any]:
+    return evaluate_typed_records(
+        model, tokenizer, rows, device, max_len, head_max_len, option_max_len,
+        batch_size, permutations,
+    )[0]
 
 
 def main() -> None:
@@ -212,6 +258,8 @@ def main() -> None:
     parser.add_argument("--split", default="test", choices=("train", "test"))
     parser.add_argument("--output", help="write the JSON report")
     parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument("--permutations", type=int, default=1,
+                        help="measure prediction stability over option orderings")
     parser.add_argument("--device", choices=("auto", "cpu", "mps", "cuda"), default="auto")
     args = parser.parse_args()
     if args.prepare:
@@ -237,7 +285,7 @@ def main() -> None:
         "metrics": evaluate_typed_rows(
             model, tokenizer, rows, device,
             config.get("max_len", 768), config.get("head_max_len", 384),
-            config.get("option_max_len", 48), args.batch_size,
+            config.get("option_max_len", 48), args.batch_size, args.permutations,
         ),
         "published_comparison": PUBLISHED,
     }

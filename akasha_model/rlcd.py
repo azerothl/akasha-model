@@ -146,6 +146,10 @@ def main() -> None:
     parser.add_argument("--ranked-weight", type=float, default=1.0)
     parser.add_argument("--policy-weight", type=float, default=1.0)
     parser.add_argument(
+        "--target-mode", choices=("provided", "one_hot"), default="provided",
+        help="use supplied target distributions or one-hot labels",
+    )
+    parser.add_argument(
         "--type-balance", action="store_true",
         help="average Choice/Score/Noul losses equally instead of by question count",
     )
@@ -175,11 +179,15 @@ def main() -> None:
     }
     if args.init:
         model, tokenizer, config = load_decision_checkpoint(args.init, device)
+        config = dict(config)
+        config.update(policy_weight=args.policy_weight, type_balance=args.type_balance,
+                      target_mode=args.target_mode)
     else:
         model, tokenizer = make_decision_model(config, device)
+        config["target_mode"] = args.target_mode
     collator = MaskCollator(
         tokenizer, args.max_len, args.head_max_len, args.option_max_len,
-        args.group_size, args.seed,
+        args.group_size, args.seed, args.target_mode,
     )
     train_loader = DataLoader(
         MultiQuestionDataset(args.train), batch_size=args.batch_size,
@@ -188,7 +196,8 @@ def main() -> None:
     validation_loader = DataLoader(
         MultiQuestionDataset(args.validation), batch_size=args.batch_size,
         collate_fn=MaskCollator(
-            tokenizer, args.max_len, args.head_max_len, args.option_max_len, 1, args.seed,
+            tokenizer, args.max_len, args.head_max_len, args.option_max_len,
+            1, args.seed, args.target_mode,
         ),
     )
     optimiser = _build_optimiser(model, args)
