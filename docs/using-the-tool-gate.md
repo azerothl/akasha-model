@@ -290,6 +290,7 @@ side effects.
 | Need | Location |
 |------|----------|
 | Run demos / thresholds / go-no-go | [examples/gate/README.md](../examples/gate/README.md) |
+| Other concrete menus (triage, OS routing, checklist, ensemble, vision) | [use-cases.md](use-cases.md) |
 | Package API | `akasha_model.gate`, `gate_multitask`, `host`, `tool_calling` |
 | Host demo (fake OS) | `python examples/gate/host_demo.py` |
 | Multitask / RLCD text training | Root [README.md](../README.md) |
