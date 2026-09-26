@@ -4,6 +4,9 @@ Product direction: a System 2 **proposes** a tool call; Akasha **authorizes**,
 **abstains**, or **blocks**. Nothing is executed. The deterministic boundary
 remains `ToolCallPlanner` via `evaluate_gate`.
 
+**Start here for end-to-end usage:** [docs/using-the-tool-gate.md](../../docs/using-the-tool-gate.md)
+(install, Path A scripted signals, Path B scored checkpoint, host loop).
+
 ## Defaults (planner thresholds)
 
 Exported from `akasha_model.gate` / `default_gate_planner()`:
