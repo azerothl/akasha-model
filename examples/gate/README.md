@@ -7,6 +7,10 @@ remains `ToolCallPlanner` via `evaluate_gate`.
 **Start here for end-to-end usage:** [docs/using-the-tool-gate.md](../../docs/using-the-tool-gate.md)
 (install, Path A scripted signals, Path B scored checkpoint, host loop).
 
+**Other menus (not tool calls):** [docs/use-cases.md](../../docs/use-cases.md) —
+support triage, OS action routing, multitask checklist, ensemble abstention,
+Wikispeedia, vision lab.
+
 ## Defaults (planner thresholds)
 
 Exported from `akasha_model.gate` / `default_gate_planner()`:
