@@ -95,3 +95,15 @@ python examples/gate/host_demo.py
 ```
 
 See [docs/using-the-tool-gate.md](../../docs/using-the-tool-gate.md) Path C.
+
+## Outcomes (threshold calibration)
+
+Log post-hoc success / user overrides, then summarize:
+
+```sh
+python examples/gate/outcomes_demo.py --log data/gate/outcomes.jsonl
+```
+
+API: `append_outcome`, `record_from_host_outcome`, `summarize_outcomes`,
+`suggest_threshold_updates` (`akasha_model.outcomes`). Suggestions never
+auto-write new `DEFAULT_*` values — Path D in the user guide.
