@@ -274,6 +274,46 @@ side effects.
 
 ---
 
+## Path D — Outcomes (calibrate thresholds)
+
+After each gated call, log what happened so you can tune thresholds on **real**
+results (not Hub typed-decisions scores).
+
+```python
+from akasha_model import (
+    append_outcome, record_from_host_outcome,
+    load_outcomes, summarize_outcomes, suggest_threshold_updates,
+)
+
+outcome = run_gated_call(tools, proposal, signals, host)
+append_outcome(
+    "data/gate/outcomes.jsonl",
+    record_from_host_outcome(
+        outcome,
+        success=True,              # did the tool actually help?
+        user_forced=False,         # did a human override a block/abstain?
+        notes="optional",
+        signals=signals,
+    ),
+)
+
+rows = load_outcomes("data/gate/outcomes.jsonl")
+print(summarize_outcomes(rows))
+print(suggest_threshold_updates(rows))  # suggestions only — never auto-applies
+```
+
+Demo:
+
+```sh
+python examples/gate/outcomes_demo.py --log data/gate/outcomes.jsonl
+```
+
+Akasha OS should append the same JSONL (or equivalent) from production traffic.
+Do **not** change `DEFAULT_*` thresholds until the summary shows a clear
+false-positive or risky-failure pattern.
+
+---
+
 ## What this is not
 
 - Not a chatbot that “sorts your email” end-to-end without a proposal + catalog
@@ -292,5 +332,6 @@ side effects.
 | Run demos / thresholds / go-no-go | [examples/gate/README.md](../examples/gate/README.md) |
 | Package API | `akasha_model.gate`, `gate_multitask`, `host`, `tool_calling` |
 | Host demo (fake OS) | `python examples/gate/host_demo.py` |
+| Outcomes / calibration | `python examples/gate/outcomes_demo.py` · `akasha_model.outcomes` |
 | Multitask / RLCD text training | Root [README.md](../README.md) |
 | Vision games (lab only) | [examples/doom](../examples/doom/), [examples/chess](../examples/chess/) |

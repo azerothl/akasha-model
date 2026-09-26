@@ -30,6 +30,13 @@ from akasha_model.gate import (
     evaluate_gate,
 )
 from akasha_model.host import dispatch_plan, run_gated_call
+from akasha_model.outcomes import (
+    append_outcome,
+    load_outcomes,
+    record_from_host_outcome,
+    suggest_threshold_updates,
+    summarize_outcomes,
+)
 from akasha_model.typed_decisions import convert_typed_row
 
 
@@ -398,6 +405,56 @@ def test_dispatch_plan_respects_host_permission_denial():
     )
     assert outcome.action == "rejected_by_host"
     assert "ACL" in outcome.host_reason
+
+
+def test_outcome_jsonl_roundtrip_and_summary(tmp_path):
+    tools = {
+        "fs.read": ToolSpec(
+            "fs.read",
+            parameters={"type": "object", "required": ["path"],
+                        "properties": {"path": {"type": "string"}},
+                        "additionalProperties": False},
+            required_capability="workspace_access",
+        ),
+        "fs.delete": ToolSpec("fs.delete", irreversible=True),
+    }
+
+    class OkHost:
+        def check_permissions(self, tool_name, arguments):
+            return True, "ok"
+
+        def execute(self, tool_name, arguments):
+            return {"ok": True}
+
+    outcome = run_gated_call(
+        tools,
+        ToolProposal("fs.read", {"path": "notes.txt"}),
+        GateSignals(
+            authorized=0.95, sufficient_context=0.9, capability_present=0.92,
+            confirmation_needed=0.05,
+        ),
+        OkHost(),
+    )
+    path = tmp_path / "outcomes.jsonl"
+    record = record_from_host_outcome(outcome, success=True, notes="ok")
+    append_outcome(path, record)
+    append_outcome(path, record_from_host_outcome(
+        run_gated_call(
+            tools,
+            ToolProposal("fs.delete", {"path": "x"}),
+            GateSignals(authorized=0.9, sufficient_context=0.9, capability_present=0.9),
+            OkHost(),
+        ),
+        user_forced=True, success=True, notes="overrode block",
+    ))
+    rows = load_outcomes(path)
+    assert len(rows) == 2
+    summary = summarize_outcomes(rows)
+    assert summary["executed"] == 1
+    assert summary["user_forced"] == 1
+    advice = suggest_threshold_updates(rows)
+    assert "suggestions" in advice
+    assert advice["summary"]["count"] == 2
 
 
 def test_mask_sequence_places_a_marker_per_option():
