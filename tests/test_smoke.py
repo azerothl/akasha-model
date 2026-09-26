@@ -19,7 +19,16 @@ from akasha_model.rewards import proper_reward
 from akasha_model.rlcd import grpo_loss
 from akasha_model.sequence import QTYPES, build_sequence
 from akasha_model.tool_calling import ToolCallPlanner, ToolSpec
-from akasha_model.gate import GateSignals, ToolProposal, evaluate_gate
+from akasha_model.gate import (
+    DEFAULT_MAX_RISK_SCORE,
+    DEFAULT_MIN_CHOICE_CONFIDENCE,
+    DEFAULT_MIN_CHOICE_PROBABILITY,
+    DEFAULT_NOUL_THRESHOLD,
+    GateSignals,
+    ToolProposal,
+    default_gate_planner,
+    evaluate_gate,
+)
 from akasha_model.typed_decisions import convert_typed_row
 
 
@@ -285,6 +294,14 @@ def test_evaluate_gate_ready_abstain_and_blocked():
     )
     assert blocked.status == "blocked"
     assert "confirmation" in blocked.reason
+
+
+def test_default_gate_planner_matches_documented_thresholds():
+    planner = default_gate_planner()
+    assert planner.min_choice_probability == DEFAULT_MIN_CHOICE_PROBABILITY
+    assert planner.min_choice_confidence == DEFAULT_MIN_CHOICE_CONFIDENCE
+    assert planner.noul_threshold == DEFAULT_NOUL_THRESHOLD
+    assert planner.max_risk_score == DEFAULT_MAX_RISK_SCORE
 
 
 def test_mask_sequence_places_a_marker_per_option():

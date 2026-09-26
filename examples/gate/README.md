@@ -1,21 +1,43 @@
 # Tool gate example
 
-Shows the product direction where a System 2 **proposes** a tool call and
-Akasha **authorizes**, **abstains**, or **blocks**. Nothing is executed.
+Product direction: a System 2 **proposes** a tool call; Akasha **authorizes**,
+**abstains**, or **blocks**. Nothing is executed. The deterministic boundary
+remains `ToolCallPlanner` via `evaluate_gate`.
 
-The helper is `akasha_model.gate.evaluate_gate`; the deterministic boundary
-remains `ToolCallPlanner`.
+## Defaults (planner thresholds)
 
-## Run
+Exported from `akasha_model.gate` / `default_gate_planner()`:
 
-From the repository root:
+| Constant | Default | Effect |
+|----------|---------|--------|
+| `DEFAULT_MIN_CHOICE_PROBABILITY` | `0.55` | Below → `abstain` |
+| `DEFAULT_MIN_CHOICE_CONFIDENCE` | `0.50` | Below → `abstain` |
+| `DEFAULT_NOUL_THRESHOLD` | `0.70` | `authorized` / `sufficient_context` / `capability_present` below → `blocked` |
+| `DEFAULT_MAX_RISK_SCORE` | `1.5` | Expected risk (levels 0–2) above → `blocked` |
+
+Also blocked: unknown tool, failed argument schema, missing confirmation when
+`requires_confirmation` / `irreversible` / high `confirmation_needed` noul.
+
+### Go / no-go (false positives & negatives)
+
+Treat these as release checks for the wedge:
+
+| Case | Fail if |
+|------|---------|
+| Safe read / confirmed broadcast | status is not `ready` (**false positive** block) |
+| Delete without confirmation | status is `ready` (**false negative**) |
+| High-risk payment / shell without capability | status is `ready` |
+| Ambiguous mail | status is `ready` (must `abstain` or `blocked`) |
+
+Tune thresholds on a held-out authorize-tool-call split before changing defaults.
+Latency target for a host integration: gate ≪ System 2 proposal time.
+
+## Scripted signals (no trained scorer)
 
 ```sh
 uv pip install -e '.[dev]'
 python examples/gate/demo.py
 ```
-
-Expected flavours in the output:
 
 | Scenario | Typical status |
 |----------|----------------|
@@ -26,6 +48,34 @@ Expected flavours in the output:
 | Shell without capability | `blocked` |
 | Broadcast with confirmation | `ready` |
 
-Wire a real host the same way Akasha OS does: call your executor only when
-`plan.status == "ready"` (or `plan.executable`), and repeat your own permission
-checks.
+## Scored path (tiny multitask → gate)
+
+JSONL is synthetic authorize-tool-call data (`safe` / `dangerous` / `ambiguous`),
+split by disjoint `family:variant` contexts (anti-leakage). Files go under
+`data/gate/` (gitignored).
+
+```sh
+python examples/gate/generate_data.py --output data/gate
+python examples/gate/train_tiny.py --data data/gate --output runs/gate-tiny.pt
+python examples/gate/scored_demo.py --checkpoint examples/gate/checkpoints/gate-tiny.pt
+# refresh checkpoint (writes runs/ then copy if desired):
+python examples/gate/scored_demo.py --train --epochs 40 --checkpoint runs/gate-tiny.pt
+```
+
+A small trained checkpoint is committed at
+`examples/gate/checkpoints/gate-tiny.pt` for CI / quick demos.
+
+`akasha_model.gate_multitask.plan_scored_proposal` fills Score / Noul from the
+tiny multitask scorer, peaks Choice on the System 2 proposal (the gate
+authorizes a proposed call), then calls `evaluate_gate`. Still **no executor**.
+Pass `use_model_choice=True` only once the route head is strong enough.
+
+## Host / Akasha OS hook (sketch)
+
+```python
+plan = plan_scored_proposal(...)  # or evaluate_gate(...)
+if plan.executable:  # status == "ready"
+    host_executor.execute(plan.tool_name, plan.arguments)  # OS / app only
+```
+
+Do not put the executor in this package. Repeat OS permission checks after `ready`.
