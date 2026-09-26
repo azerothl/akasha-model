@@ -73,12 +73,21 @@ tiny multitask scorer, peaks Choice on the System 2 proposal (the gate
 authorizes a proposed call), then calls `evaluate_gate`. Still **no executor**.
 Pass `use_model_choice=True` only once the route head is strong enough.
 
-## Host / Akasha OS hook (sketch)
+## Host / Akasha OS contract
+
+Akasha OS is external. Implement `ToolHost` and use:
 
 ```python
-plan = plan_scored_proposal(...)  # or evaluate_gate(...)
-if plan.executable:  # status == "ready"
-    host_executor.execute(plan.tool_name, plan.arguments)  # OS / app only
+from akasha_model import run_gated_call, run_scored_gated_call, dispatch_plan
+# run_gated_call(tools, proposal, signals, host) → HostOutcome
+# run_scored_gated_call(model, collator, tools, proposal, host, context=..., device=...)
 ```
 
-Do not put the executor in this package. Repeat OS permission checks after `ready`.
+`dispatch_plan` calls `host.execute` **only** after `ready` **and**
+`host.check_permissions` succeeds. Demo without a real OS:
+
+```sh
+python examples/gate/host_demo.py
+```
+
+See [docs/using-the-tool-gate.md](../../docs/using-the-tool-gate.md) Path C.
