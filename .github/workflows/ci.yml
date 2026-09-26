@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install package
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv --version
+          uv venv --python python
+          uv pip install -e ".[dev]"
+
+      - name: pytest
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          .venv/bin/pytest -q
+
+      - name: Gate demo (no side effects)
+        run: .venv/bin/python examples/gate/demo.py
+
+  games:
+    name: games-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install package with games extras
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv venv --python python
+          uv pip install -e ".[dev,games]"
+
+      - name: Doom smoke
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          PYTHONPATH=examples/doom .venv/bin/pytest -q examples/doom/test_smoke.py
+
+      - name: Chess smoke
+        run: .venv/bin/python examples/chess/test_smoke.py
