@@ -21,8 +21,8 @@ from .primitives import (
 from .tool_calling import ToolCallPlan, ToolCallPlanner, ToolSpec
 
 # Default planner thresholds for the gate wedge. Documented in
-# ``examples/gate/README.md`` and the top-level README. Tune on a held-out
-# authorize-tool-call split before changing production defaults.
+# ``docs/using-the-tool-gate.md`` and ``examples/gate/README.md``. Tune on a
+# held-out authorize-tool-call split before changing production defaults.
 DEFAULT_MIN_CHOICE_PROBABILITY = 0.55
 DEFAULT_MIN_CHOICE_CONFIDENCE = 0.50
 DEFAULT_NOUL_THRESHOLD = 0.70
