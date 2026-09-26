@@ -38,6 +38,9 @@ jobs:
       - name: Gate demo (no side effects)
         run: .venv/bin/python examples/gate/demo.py
 
+      - name: Scored gate demo (committed tiny checkpoint)
+        run: .venv/bin/python examples/gate/scored_demo.py --checkpoint examples/gate/checkpoints/gate-tiny.pt
+
   games:
     name: games-smoke
     runs-on: ubuntu-latest

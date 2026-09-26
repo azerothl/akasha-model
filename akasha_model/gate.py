@@ -20,6 +20,24 @@ from .primitives import (
 )
 from .tool_calling import ToolCallPlan, ToolCallPlanner, ToolSpec
 
+# Default planner thresholds for the gate wedge. Documented in
+# ``examples/gate/README.md`` and the top-level README. Tune on a held-out
+# authorize-tool-call split before changing production defaults.
+DEFAULT_MIN_CHOICE_PROBABILITY = 0.55
+DEFAULT_MIN_CHOICE_CONFIDENCE = 0.50
+DEFAULT_NOUL_THRESHOLD = 0.70
+DEFAULT_MAX_RISK_SCORE = 1.5
+
+
+def default_gate_planner() -> ToolCallPlanner:
+    """Conservative planner used by ``evaluate_gate`` when none is supplied."""
+    return ToolCallPlanner(
+        min_choice_probability=DEFAULT_MIN_CHOICE_PROBABILITY,
+        min_choice_confidence=DEFAULT_MIN_CHOICE_CONFIDENCE,
+        noul_threshold=DEFAULT_NOUL_THRESHOLD,
+        max_risk_score=DEFAULT_MAX_RISK_SCORE,
+    )
+
 
 @dataclass(frozen=True)
 class ToolProposal:
@@ -99,12 +117,7 @@ def evaluate_gate(
     choice:
         Optional precomputed Choice result (e.g. from a trained scorer).
     """
-    active = planner or ToolCallPlanner(
-        min_choice_probability=0.55,
-        min_choice_confidence=0.50,
-        noul_threshold=0.70,
-        max_risk_score=1.5,
-    )
+    active = planner or default_gate_planner()
     resolved = choice if choice is not None else choice_from_proposal(tools, proposal)
     nouls: dict[str, float] = {
         "authorized": signals.authorized,
@@ -131,9 +144,14 @@ def describe_plan(plan: ToolCallPlan) -> str:
 
 
 __all__ = [
+    "DEFAULT_MAX_RISK_SCORE",
+    "DEFAULT_MIN_CHOICE_CONFIDENCE",
+    "DEFAULT_MIN_CHOICE_PROBABILITY",
+    "DEFAULT_NOUL_THRESHOLD",
     "GateSignals",
     "ToolProposal",
     "choice_from_proposal",
+    "default_gate_planner",
     "describe_plan",
     "evaluate_gate",
 ]

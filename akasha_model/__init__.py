@@ -14,7 +14,18 @@ from .primitives import (
 from .decision import DecisionModel, load_decision_checkpoint
 from .multitask import MultiQuestionCollator, MultiQuestionDataset, MultiQuestionTinyScorer
 from .rlcd import grpo_loss
-from .gate import GateSignals, ToolProposal, describe_plan, evaluate_gate
+from .gate import (
+    DEFAULT_MAX_RISK_SCORE,
+    DEFAULT_MIN_CHOICE_CONFIDENCE,
+    DEFAULT_MIN_CHOICE_PROBABILITY,
+    DEFAULT_NOUL_THRESHOLD,
+    GateSignals,
+    ToolProposal,
+    default_gate_planner,
+    describe_plan,
+    evaluate_gate,
+)
+from .gate_multitask import plan_scored_proposal, score_proposal
 from .tool_calling import ToolCallPlan, ToolCallPlanner, ToolSpec, validate_tool_arguments
 from .typed_decisions import convert_typed_row
 from .vision import CHESS_OPTION_IDS, DOOM_OPTION_IDS, TOTAL_OPTIONS, DoomScorerV2
@@ -23,11 +34,13 @@ __all__ = [
     "CHESS_OPTION_IDS", "DOOM_OPTION_IDS", "TOTAL_OPTIONS", "DoomScorerV2",
     "ChoiceQuestion", "ChoiceResult", "DecisionRequest", "NoulQuestion",
     "NoulResult", "OptionSpec", "ScoreLevel", "ScoreQuestion", "ScoreResult",
+    "DEFAULT_MAX_RISK_SCORE", "DEFAULT_MIN_CHOICE_CONFIDENCE",
+    "DEFAULT_MIN_CHOICE_PROBABILITY", "DEFAULT_NOUL_THRESHOLD",
     "DecisionModel", "MultiQuestionCollator", "MultiQuestionDataset",
     "MultiQuestionTinyScorer", "GateSignals", "ToolProposal", "ToolCallPlan",
-    "ToolCallPlanner", "ToolSpec", "convert_typed_row", "describe_plan",
-    "evaluate_gate", "grpo_loss", "load_decision_checkpoint",
-    "validate_tool_arguments",
+    "ToolCallPlanner", "ToolSpec", "convert_typed_row", "default_gate_planner",
+    "describe_plan", "evaluate_gate", "grpo_loss", "load_decision_checkpoint",
+    "plan_scored_proposal", "score_proposal", "validate_tool_arguments",
 ]
 
 __version__ = "0.2.0"

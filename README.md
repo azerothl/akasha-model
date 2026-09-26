@@ -91,8 +91,16 @@ it returns a `ready`, `abstain` or `blocked` plan, validates a subset of the
 parameter JSON schema, and never runs the tool. Akasha OS must supply its
 own executor after a `ready` plan and repeat its final checks.
 
+The host-facing helper is `evaluate_gate` (and `plan_scored_proposal` when a
+multitask scorer fills Choice / Score / Noul). Default thresholds live in
+`akasha_model.gate` (`DEFAULT_MIN_CHOICE_PROBABILITY=0.55`,
+`DEFAULT_MIN_CHOICE_CONFIDENCE=0.50`, `DEFAULT_NOUL_THRESHOLD=0.70`,
+`DEFAULT_MAX_RISK_SCORE=1.5`). See [examples/gate](examples/gate/README.md) for
+the scripted demo, authorize-tool-call JSONL, tiny train loop, and go/no-go
+checks on false positives.
+
 ```python
-from akasha_model import ToolCallPlanner, ToolSpec
+from akasha_model import ToolCallPlanner, ToolSpec, evaluate_gate, ToolProposal, GateSignals
 
 spec = ToolSpec(
     "fs.read", "Read a file",
@@ -101,11 +109,10 @@ spec = ToolSpec(
                 "additionalProperties": False},
     required_capability="workspace_access",
 )
-plan = ToolCallPlanner().plan(
-    choice_result, {spec.name: spec}, arguments={"path": "notes.txt"},
-    nouls={"authorized": authorized_result,
-           "capability_present": capability_result,
-           "sufficient_context": context_result},
+plan = evaluate_gate(
+    {spec.name: spec, "fs.delete": ToolSpec("fs.delete")},
+    ToolProposal("fs.read", {"path": "notes.txt"}),
+    GateSignals(authorized=0.95, sufficient_context=0.9, capability_present=0.92),
 )
 if plan.status == "ready":
     akasha_executor.execute(plan.tool_name, plan.arguments)
