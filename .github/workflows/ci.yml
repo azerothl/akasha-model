@@ -41,6 +41,9 @@ jobs:
       - name: Scored gate demo (committed tiny checkpoint)
         run: .venv/bin/python examples/gate/scored_demo.py --checkpoint examples/gate/checkpoints/gate-tiny.pt
 
+      - name: Host dispatch demo (fake side effects)
+        run: .venv/bin/python examples/gate/host_demo.py
+
   games:
     name: games-smoke
     runs-on: ubuntu-latest

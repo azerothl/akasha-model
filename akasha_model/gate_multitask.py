@@ -20,6 +20,7 @@ from .gate import (
     default_gate_planner,
     evaluate_gate,
 )
+from .host import HostOutcome, ToolHost, dispatch_plan
 from .multitask import (
     MultiQuestionCollator,
     MultiQuestionExample,
@@ -241,6 +242,30 @@ def load_gate_multitask(path: str | Any, device: torch.device):
     return load_checkpoint(path, device)
 
 
+def run_scored_gated_call(
+    model: MultiQuestionTinyScorer,
+    collator: MultiQuestionCollator,
+    tools: Mapping[str, ToolSpec],
+    proposal: ToolProposal,
+    host: ToolHost,
+    *,
+    context: Mapping[str, Any] | str,
+    device: torch.device,
+    confirmation_given: bool = False,
+    planner: ToolCallPlanner | None = None,
+    use_model_choice: bool = False,
+) -> HostOutcome:
+    """Score → gate → host dispatch. Executes only inside the supplied host."""
+    plan = plan_scored_proposal(
+        model, collator, tools, proposal,
+        context=context, device=device,
+        confirmation_given=confirmation_given,
+        planner=planner,
+        use_model_choice=use_model_choice,
+    )
+    return dispatch_plan(plan, host)
+
+
 __all__ = [
     "NOUL_IDS",
     "RISK_LEVELS",
@@ -248,5 +273,6 @@ __all__ = [
     "gate_tool_options",
     "load_gate_multitask",
     "plan_scored_proposal",
+    "run_scored_gated_call",
     "score_proposal",
 ]

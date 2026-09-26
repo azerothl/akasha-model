@@ -6,7 +6,7 @@ Akasha Model takes a piece of state (text or JSON) and a list of questions. Each
 
 The public comparison for this shape of model is TypeSafe [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev). TypeSafe has not published its design. This repository is the decision scorer for Akasha OS: independent weights, independent training, and a deterministic tool-call planner that never executes side effects.
 
-**Using the tool gate (authorize / abstain / block before your host runs a tool):** see [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md) and [examples/gate](examples/gate/README.md).
+**Using the tool gate (authorize / abstain / block before your host runs a tool):** see [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md) and [examples/gate](examples/gate/README.md). Host contract: `akasha_model.host` (`run_gated_call` / `dispatch_plan`); demo `python examples/gate/host_demo.py`.
 
 ## Demo
 

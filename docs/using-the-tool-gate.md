@@ -220,19 +220,53 @@ Override with a custom `ToolCallPlanner(...)` passed into `evaluate_gate` /
 
 ---
 
-## Minimal host loop
+## Path C — Host dispatch (Akasha OS contract)
+
+Akasha OS is **not** vendored in this repository. Integrate by implementing
+`ToolHost` (`check_permissions` + `execute`) and calling `dispatch_plan` /
+`run_gated_call`. The package never executes tools itself.
+
+```python
+from akasha_model import (
+    ToolProposal, GateSignals, run_gated_call, describe_outcome,
+)
+
+class MyOsHost:
+    def check_permissions(self, tool_name, arguments):
+        # Final OS / IAM checks (capabilities, confirmations, ACLs).
+        return True, "ok"
+
+    def execute(self, tool_name, arguments):
+        # Real side effects live HERE (Akasha OS), not in akasha_model.
+        return os_runtime.invoke(tool_name, arguments)
+
+outcome = run_gated_call(tools, proposal, signals, MyOsHost())
+print(describe_outcome(outcome))
+# EXECUTED / SKIPPED_ABSTAIN / SKIPPED_BLOCKED / REJECTED_BY_HOST
+```
+
+| `outcome.action` | Meaning |
+|------------------|---------|
+| `executed` | Gate was `ready` and host permissions passed → `execute` ran |
+| `skipped_abstain` | Gate abstained → no execute |
+| `skipped_blocked` | Gate blocked → no execute |
+| `rejected_by_host` | Gate ready but host `check_permissions` failed → no execute |
+
+Scored path: `run_scored_gated_call(...)` (same host contract).
+
+Out-of-OS demo (in-memory fake side effects only):
+
+```sh
+python examples/gate/host_demo.py
+```
+
+### Minimal host loop
 
 ```text
 1. Build a ToolSpec catalog (names, schemas, capabilities).
 2. System 2 proposes tool + args (+ optional situation text).
-3. Call evaluate_gate(...) or plan_scored_proposal(...).
-4. if plan.executable:
-      re-check permissions in YOUR runtime
-      execute(plan.tool_name, plan.arguments)
-   elif plan.status == "abstain":
-      ask user / regenerate proposal
-   else:
-      refuse and surface plan.reason
+3. Call run_gated_call(...) or run_scored_gated_call(...).
+4. Handle HostOutcome (executed / skipped_* / rejected_by_host).
 ```
 
 Akasha OS (or any other host) stays the source of truth for permissions and
@@ -256,6 +290,7 @@ side effects.
 | Need | Location |
 |------|----------|
 | Run demos / thresholds / go-no-go | [examples/gate/README.md](../examples/gate/README.md) |
-| Package API | `akasha_model.gate`, `akasha_model.gate_multitask`, `akasha_model.tool_calling` |
+| Package API | `akasha_model.gate`, `gate_multitask`, `host`, `tool_calling` |
+| Host demo (fake OS) | `python examples/gate/host_demo.py` |
 | Multitask / RLCD text training | Root [README.md](../README.md) |
 | Vision games (lab only) | [examples/doom](../examples/doom/), [examples/chess](../examples/chess/) |
