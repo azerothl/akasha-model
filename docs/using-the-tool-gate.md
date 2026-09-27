@@ -411,6 +411,9 @@ Breaking renames require a version bump + migration note in
 - The committed `gate-tiny.pt` is a **small demo** scorer on synthetic data —
   train on your traffic before production (see the **Production Path B
   checklist** in [examples/gate/README.md](../examples/gate/README.md))
+- Optional Path B description-reading probe (not a gate cutover): see
+  [dataset-zeroshot-decision.md](dataset-zeroshot-decision.md) and
+  `scripts/generate_zeroshot_decision_dataset.py` (data under `data/`, gitignored)
 
 ---
 

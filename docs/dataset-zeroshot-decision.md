@@ -1,8 +1,12 @@
 # Dataset spec: zero-shot conditional decisions
 
-**Status:** draft · **Date:** 2026-09-22  
+**Status:** optional Path B probe (implemented smoke CLI) · **Date:** 2026-09-27  
 **Repo:** `azerothl/akasha-model`  
 **Related:** ADR 0010 (akasha-os decision layer), MASK+RLCD path, `ToolCallPlanner`
+
+> Product direction (2026-09-25): akasha-model is an **authorization gate**, not a
+> generalist System 1. This dataset is an **optional Path B quality probe**
+> (novel option descriptions). It is **not** a cutover gate or Jev parity proof.
 
 ## 1. Goal
 
