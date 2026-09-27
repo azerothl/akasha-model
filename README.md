@@ -8,6 +8,8 @@ The public comparison for this shape of model is TypeSafe [Jev](https://typesafe
 
 **Using the tool gate (authorize / abstain / block before your host runs a tool):** see [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md) and [examples/gate](examples/gate/README.md). Host: `akasha_model.host` (`run_gated_call`); outcomes: `akasha_model.outcomes` (`python examples/gate/outcomes_demo.py`).
 
+**Stable pin for OS consumers:** `git+https://github.com/azerothl/akasha-model.git@v0.2.0` — see [CHANGELOG.md](CHANGELOG.md). Prefer release tags over feature branches.
+
 **Concrete use cases beyond the gate** (support triage, OS action menus, multi-signal checklists, ensemble abstention, Wikispeedia, vision lab): [docs/use-cases.md](docs/use-cases.md).
 
 ## Demo
