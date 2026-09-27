@@ -1,0 +1,57 @@
+{
+  "checkpoint": "runs\\akasha-rlcd-C-psr-mean.pt",
+  "source": "data\\akasha_os_multi_v4\\test.jsonl",
+  "device": "cuda",
+  "metrics": {
+    "all": {
+      "examples": 33000,
+      "accuracy": 0.8197272727272727,
+      "soft_accuracy": 0.7685527861239106,
+      "brier": 0.2340169224293663,
+      "ece": 0.2214024825150317,
+      "score_mae": 0.5053678589450622
+    },
+    "choice": {
+      "examples": 3000,
+      "accuracy": 0.159,
+      "soft_accuracy": 0.1392776244431734,
+      "brier": 0.8617674854236345,
+      "ece": 0.11383898627758025,
+      "score_mae": null
+    },
+    "score": {
+      "examples": 3000,
+      "accuracy": 0.7603333333333333,
+      "soft_accuracy": 0.5930003945001712,
+      "brier": 0.4011849197914125,
+      "ece": 0.308936239918073,
+      "score_mae": 0.5053678589450622
+    },
+    "noul": {
+      "examples": 27000,
+      "accuracy": 0.8997407407407407,
+      "soft_accuracy": 0.857978069824408,
+      "brier": 0.14569263794533138,
+      "ece": 0.22369111854721,
+      "score_mae": null
+    }
+  },
+  "published_comparison": {
+    "jev": {
+      "source": "TypeSafe Jev 1.13.0, third-party published, not measured here",
+      "accuracy": 0.727,
+      "soft_accuracy": 0.58,
+      "brier": 0.148,
+      "ece": 0.144,
+      "score_mae": 0.391
+    },
+    "laya_typed_decisions": {
+      "source": "convaiinnovations/laya-typed-decisions, published by Laya",
+      "accuracy": 0.766,
+      "soft_accuracy": 0.471,
+      "brier": 0.062,
+      "ece": 0.213,
+      "score_mae": 0.242
+    }
+  }
+}

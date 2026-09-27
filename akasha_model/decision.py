@@ -138,13 +138,17 @@ class MaskCollator:
     def __init__(
         self, tokenizer, max_len: int = 768, head_max_len: int = 384,
         option_max_len: int = 48, group_size: int = 1, seed: int = 0,
+        target_mode: str = "provided",
     ) -> None:
+        if target_mode not in {"provided", "one_hot"}:
+            raise ValueError("target_mode must be provided or one_hot")
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.head_max_len = head_max_len
         self.option_max_len = option_max_len
         self.group_size = max(1, group_size)
         self.seed = seed
+        self.target_mode = target_mode
 
     def encode_question(
         self, state: Any, payload: dict[str, Any], option_order: list[int] | None = None,
@@ -154,6 +158,8 @@ class MaskCollator:
             self.tokenizer, state, question, self.max_len, self.head_max_len,
             option_order, self.option_max_len,
         )
+        if self.target_mode == "one_hot":
+            question = {**question, "target": None}
         options = option_target(question, option_order)
         if len(markers) != len(options):
             raise ValueError(
