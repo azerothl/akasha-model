@@ -6,6 +6,10 @@ Akasha Model takes a piece of state (text or JSON) and a list of questions. Each
 
 The public comparison for this shape of model is TypeSafe [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev). TypeSafe has not published its design. This repository is the decision scorer for Akasha OS: independent weights, independent training, and a deterministic tool-call planner that never executes side effects.
 
+**Using the tool gate (authorize / abstain / block before your host runs a tool):** see [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md) and [examples/gate](examples/gate/README.md). Host: `akasha_model.host` (`run_gated_call`); outcomes: `akasha_model.outcomes` (`python examples/gate/outcomes_demo.py`).
+
+**Concrete use cases beyond the gate** (support triage, OS action menus, multi-signal checklists, ensemble abstention, Wikispeedia, vision lab): [docs/use-cases.md](docs/use-cases.md).
+
 ## Demo
 
 The same option-attention head can score controller buttons from image patches. [This ten-second film](docs/jevre-demo-10s-bgm.mp4) joins two selected five-second windows: live `deadly_corridor` combat on the seven Doom buttons, then a chess controller walking to and playing moves with five keys. The diagram shows the tensors used for each decision. The Doom window came from the supplied joint checkpoint, which averaged 0.60 kills and -97.50 reward across its ten recorded episodes. The chess window came from the stronger chess-only checkpoint, which scored 4 wins, 46 draws and 0 losses in 50 sampled games against a random mover, but 0 wins, 2 draws and 48 losses against Stockfish level 0. The windows were selected for activity and are not typical-play or competence claims.
@@ -91,8 +95,16 @@ it returns a `ready`, `abstain` or `blocked` plan, validates a subset of the
 parameter JSON schema, and never runs the tool. Akasha OS must supply its
 own executor after a `ready` plan and repeat its final checks.
 
+The host-facing helper is `evaluate_gate` (and `plan_scored_proposal` when a
+multitask scorer fills Choice / Score / Noul). Default thresholds live in
+`akasha_model.gate` (`DEFAULT_MIN_CHOICE_PROBABILITY=0.55`,
+`DEFAULT_MIN_CHOICE_CONFIDENCE=0.50`, `DEFAULT_NOUL_THRESHOLD=0.70`,
+`DEFAULT_MAX_RISK_SCORE=1.5`). See [examples/gate](examples/gate/README.md) for
+the scripted demo, authorize-tool-call JSONL, tiny train loop, and go/no-go
+checks on false positives.
+
 ```python
-from akasha_model import ToolCallPlanner, ToolSpec
+from akasha_model import ToolCallPlanner, ToolSpec, evaluate_gate, ToolProposal, GateSignals
 
 spec = ToolSpec(
     "fs.read", "Read a file",
@@ -101,11 +113,10 @@ spec = ToolSpec(
                 "additionalProperties": False},
     required_capability="workspace_access",
 )
-plan = ToolCallPlanner().plan(
-    choice_result, {spec.name: spec}, arguments={"path": "notes.txt"},
-    nouls={"authorized": authorized_result,
-           "capability_present": capability_result,
-           "sufficient_context": context_result},
+plan = evaluate_gate(
+    {spec.name: spec, "fs.delete": ToolSpec("fs.delete")},
+    ToolProposal("fs.read", {"path": "notes.txt"}),
+    GateSignals(authorized=0.95, sufficient_context=0.9, capability_present=0.92),
 )
 if plan.status == "ready":
     akasha_executor.execute(plan.tool_name, plan.arguments)

@@ -19,6 +19,24 @@ from akasha_model.rewards import proper_reward
 from akasha_model.rlcd import grpo_loss
 from akasha_model.sequence import QTYPES, build_sequence
 from akasha_model.tool_calling import ToolCallPlanner, ToolSpec
+from akasha_model.gate import (
+    DEFAULT_MAX_RISK_SCORE,
+    DEFAULT_MIN_CHOICE_CONFIDENCE,
+    DEFAULT_MIN_CHOICE_PROBABILITY,
+    DEFAULT_NOUL_THRESHOLD,
+    GateSignals,
+    ToolProposal,
+    default_gate_planner,
+    evaluate_gate,
+)
+from akasha_model.host import dispatch_plan, run_gated_call
+from akasha_model.outcomes import (
+    append_outcome,
+    load_outcomes,
+    record_from_host_outcome,
+    suggest_threshold_updates,
+    summarize_outcomes,
+)
 from akasha_model.typed_decisions import convert_typed_row, evaluate_typed_records
 
 
@@ -237,6 +255,206 @@ def test_tool_call_planner_abstains_on_weak_choice():
         nouls={"authorized": 1.0, "sufficient_context": 1.0},
     )
     assert plan.status == "abstain"
+
+
+def test_evaluate_gate_ready_abstain_and_blocked():
+    tools = {
+        "fs.read": ToolSpec(
+            "fs.read",
+            parameters={"type": "object", "required": ["path"],
+                        "properties": {"path": {"type": "string"}},
+                        "additionalProperties": False},
+            required_capability="workspace_access",
+        ),
+        "fs.delete": ToolSpec(
+            "fs.delete", irreversible=True, required_capability="workspace_access",
+        ),
+    }
+    ready = evaluate_gate(
+        tools,
+        ToolProposal("fs.read", {"path": "notes.txt"}),
+        GateSignals(
+            authorized=0.95, sufficient_context=0.9, capability_present=0.92,
+            confirmation_needed=0.05,
+        ),
+    )
+    assert ready.status == "ready"
+    assert ready.executable
+    assert ready.arguments == {"path": "notes.txt"}
+
+    abstain = evaluate_gate(
+        tools,
+        ToolProposal(
+            "fs.read",
+            choice_probabilities={"fs.read": 0.52, "fs.delete": 0.48},
+        ),
+        GateSignals(authorized=1.0, sufficient_context=1.0, capability_present=1.0),
+        planner=ToolCallPlanner(min_choice_probability=0.60),
+    )
+    assert abstain.status == "abstain"
+
+    blocked = evaluate_gate(
+        tools,
+        ToolProposal("fs.delete", {"path": "notes.txt"}),
+        GateSignals(
+            authorized=0.95, sufficient_context=0.95, capability_present=0.95,
+        ),
+    )
+    assert blocked.status == "blocked"
+    assert "confirmation" in blocked.reason
+
+
+def test_default_gate_planner_matches_documented_thresholds():
+    planner = default_gate_planner()
+    assert planner.min_choice_probability == DEFAULT_MIN_CHOICE_PROBABILITY
+    assert planner.min_choice_confidence == DEFAULT_MIN_CHOICE_CONFIDENCE
+    assert planner.noul_threshold == DEFAULT_NOUL_THRESHOLD
+    assert planner.max_risk_score == DEFAULT_MAX_RISK_SCORE
+
+
+def test_dispatch_plan_executes_only_on_ready():
+    class FakeHost:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, dict | None]] = []
+
+        def check_permissions(self, tool_name, arguments):
+            return True, "ok"
+
+        def execute(self, tool_name, arguments):
+            self.calls.append((tool_name, dict(arguments or {})))
+            return {"ok": True}
+
+    tools = {
+        "fs.read": ToolSpec(
+            "fs.read",
+            parameters={"type": "object", "required": ["path"],
+                        "properties": {"path": {"type": "string"}},
+                        "additionalProperties": False},
+            required_capability="workspace_access",
+        ),
+        "fs.delete": ToolSpec(
+            "fs.delete", irreversible=True, required_capability="workspace_access",
+        ),
+    }
+    host = FakeHost()
+    ready_outcome = run_gated_call(
+        tools,
+        ToolProposal("fs.read", {"path": "notes.txt"}),
+        GateSignals(
+            authorized=0.95, sufficient_context=0.9, capability_present=0.92,
+            confirmation_needed=0.05,
+        ),
+        host,
+    )
+    assert ready_outcome.action == "executed"
+    assert ready_outcome.did_execute
+    assert host.calls == [("fs.read", {"path": "notes.txt"})]
+
+    host.calls.clear()
+    blocked_outcome = run_gated_call(
+        tools,
+        ToolProposal("fs.delete", {"path": "notes.txt"}),
+        GateSignals(
+            authorized=0.95, sufficient_context=0.95, capability_present=0.95,
+        ),
+        host,
+    )
+    assert blocked_outcome.action == "skipped_blocked"
+    assert host.calls == []
+
+    abstain_plan = evaluate_gate(
+        tools,
+        ToolProposal(
+            "fs.read",
+            choice_probabilities={"fs.read": 0.52, "fs.delete": 0.48},
+        ),
+        GateSignals(authorized=1.0, sufficient_context=1.0, capability_present=1.0),
+        planner=ToolCallPlanner(min_choice_probability=0.60),
+    )
+    abstain_outcome = dispatch_plan(abstain_plan, host)
+    assert abstain_outcome.action == "skipped_abstain"
+    assert host.calls == []
+
+
+def test_dispatch_plan_respects_host_permission_denial():
+    class DenyHost:
+        def check_permissions(self, tool_name, arguments):
+            return False, "denied by ACL"
+
+        def execute(self, tool_name, arguments):
+            raise AssertionError("execute must not run after permission denial")
+
+    tools = {
+        "fs.read": ToolSpec(
+            "fs.read",
+            parameters={"type": "object", "required": ["path"],
+                        "properties": {"path": {"type": "string"}},
+                        "additionalProperties": False},
+            required_capability="workspace_access",
+        ),
+        "fs.delete": ToolSpec("fs.delete"),
+    }
+    outcome = run_gated_call(
+        tools,
+        ToolProposal("fs.read", {"path": "notes.txt"}),
+        GateSignals(
+            authorized=0.95, sufficient_context=0.9, capability_present=0.92,
+            confirmation_needed=0.05,
+        ),
+        DenyHost(),
+    )
+    assert outcome.action == "rejected_by_host"
+    assert "ACL" in outcome.host_reason
+
+
+def test_outcome_jsonl_roundtrip_and_summary(tmp_path):
+    tools = {
+        "fs.read": ToolSpec(
+            "fs.read",
+            parameters={"type": "object", "required": ["path"],
+                        "properties": {"path": {"type": "string"}},
+                        "additionalProperties": False},
+            required_capability="workspace_access",
+        ),
+        "fs.delete": ToolSpec("fs.delete", irreversible=True),
+    }
+
+    class OkHost:
+        def check_permissions(self, tool_name, arguments):
+            return True, "ok"
+
+        def execute(self, tool_name, arguments):
+            return {"ok": True}
+
+    outcome = run_gated_call(
+        tools,
+        ToolProposal("fs.read", {"path": "notes.txt"}),
+        GateSignals(
+            authorized=0.95, sufficient_context=0.9, capability_present=0.92,
+            confirmation_needed=0.05,
+        ),
+        OkHost(),
+    )
+    path = tmp_path / "outcomes.jsonl"
+    record = record_from_host_outcome(outcome, success=True, notes="ok")
+    append_outcome(path, record)
+    append_outcome(path, record_from_host_outcome(
+        run_gated_call(
+            tools,
+            ToolProposal("fs.delete", {"path": "x"}),
+            GateSignals(authorized=0.9, sufficient_context=0.9, capability_present=0.9),
+            OkHost(),
+        ),
+        user_forced=True, success=True, notes="overrode block",
+    ))
+    rows = load_outcomes(path)
+    assert len(rows) == 2
+    summary = summarize_outcomes(rows)
+    assert summary["executed"] == 1
+    assert summary["user_forced"] == 1
+    advice = suggest_threshold_updates(rows)
+    assert "suggestions" in advice
+    assert advice["summary"]["count"] == 2
 
 
 def test_mask_sequence_places_a_marker_per_option():
