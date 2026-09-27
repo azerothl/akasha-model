@@ -46,29 +46,31 @@ pytest -q tests/adversarial/
 
 ## Install
 
-**From a release tag (recommended for Akasha OS and other hosts):**
+### Path A only (lightweight — no torch)
+
+OS hosts that use scripted `GateSignals` + `evaluate_gate` / `run_gated_call`
+do **not** need PyTorch:
 
 ```sh
 uv pip install "akasha-model @ git+https://github.com/azerothl/akasha-model.git@v0.2.0"
-```
-
-Pin the tag in your dependency file the same way. Prefer `@v0.2.0` (or a later
-`v*` tag) over long-lived feature branches such as `cursor/gate-host-*`.
-
-See [CHANGELOG.md](../CHANGELOG.md) for what each tag includes. Path A/C surface
-for integrators: `evaluate_gate`, `run_gated_call`, `HostOutcome`, `ToolHost`.
-
-**Editable checkout (development):**
-
-```sh
-uv venv
-source .venv/bin/activate
+# or from a checkout:
 uv pip install -e '.[dev]'
 ```
 
-Python 3.10+ and PyTorch are required for a full install (see the root README).
-Path A with explicit `GateSignals` does not need a checkpoint; Path B scored
-calls do.
+This installs the planner, host dispatch, outcomes, and wire modules. Importing
+`akasha_model.gate` / `.host` / `.tool_calling` / `.outcomes` / `.wire` does not
+load torch. Prefer a release tag over feature branches such as `cursor/gate-host-*`.
+
+See [CHANGELOG.md](../CHANGELOG.md). Integrator surface: `evaluate_gate`,
+`run_gated_call`, `HostOutcome`, `ToolHost`.
+
+### Full package (Path B / train / vision)
+
+```sh
+uv pip install "akasha-model[torch] @ git+https://github.com/azerothl/akasha-model.git@v0.2.0"
+# or from a checkout:
+uv pip install -e '.[dev,torch]'
+```
 
 ---
 

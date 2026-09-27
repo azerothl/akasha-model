@@ -42,8 +42,12 @@ Latency target for a host integration: gate ≪ System 2 proposal time.
 ## Scripted signals (no trained scorer)
 
 ```sh
+# Path A (no torch):
 uv pip install -e '.[dev]'
 python examples/gate/demo.py
+
+# Path B scored demos need torch:
+uv pip install -e '.[dev,torch]'
 ```
 
 | Scenario | Typical status |

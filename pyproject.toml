@@ -11,13 +11,18 @@ requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{name = "Minimal Labs"}]
-dependencies = ["numpy>=1.26", "torch>=2.2"]
+# Path A (evaluate_gate / host / outcomes) needs no third-party deps.
+# Path B scorers, training, and vision require the torch extra.
+dependencies = []
 
 [project.optional-dependencies]
-transformers = ["transformers>=4.45"]
-eval = ["datasets>=3"]
+torch = ["numpy>=1.26", "torch>=2.2"]
+transformers = ["numpy>=1.26", "torch>=2.2", "transformers>=4.45"]
+eval = ["numpy>=1.26", "torch>=2.2", "datasets>=3"]
 dev = ["pytest>=8"]
 games = [
+  "numpy>=1.26",
+  "torch>=2.2",
   "chess>=1.11",
   "imageio>=2.37",
   "imageio-ffmpeg>=0.6",

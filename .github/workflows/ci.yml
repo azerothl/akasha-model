@@ -10,6 +10,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate-lite:
+    name: gate-lite (no torch)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install Path A only
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv venv --python python
+          uv pip install -e ".[dev]"
+          .venv/bin/python -c "import importlib.util; assert importlib.util.find_spec('torch') is None"
+
+      - name: Path A pytest
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          .venv/bin/pytest -q tests/test_gate_path_a.py
+
+      - name: Gate / host / outcomes demos (no torch)
+        run: |
+          .venv/bin/python examples/gate/demo.py
+          .venv/bin/python examples/gate/host_demo.py
+          .venv/bin/python examples/gate/outcomes_demo.py --log data/gate/outcomes-ci.jsonl
+
   core:
     name: core
     runs-on: ubuntu-latest
@@ -23,12 +54,12 @@ jobs:
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
-      - name: Install package
+      - name: Install package with torch
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           uv --version
           uv venv --python python
-          uv pip install -e ".[dev]"
+          uv pip install -e ".[dev,torch]"
 
       - name: pytest
         run: |
