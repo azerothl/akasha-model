@@ -1,0 +1,78 @@
+{
+  "contract_version": 1,
+  "description": "Path A evaluate_gate + dispatch_plan matrix for host integrator CI.",
+  "cases": [
+    {
+      "id": "safe_read_ready",
+      "proposal": {"tool_name": "fs.read", "arguments": {"path": "notes.txt"}},
+      "signals": {
+        "authorized": 0.95,
+        "sufficient_context": 0.9,
+        "capability_present": 0.92,
+        "confirmation_needed": 0.05,
+        "confirmation_given": false
+      },
+      "expect_plan_status": "ready",
+      "host_permissions": true,
+      "expect_host_action": "executed"
+    },
+    {
+      "id": "delete_without_confirmation",
+      "proposal": {"tool_name": "fs.delete", "arguments": {"path": "notes.txt"}},
+      "signals": {
+        "authorized": 0.95,
+        "sufficient_context": 0.95,
+        "capability_present": 0.95,
+        "confirmation_given": false
+      },
+      "expect_plan_status": "blocked",
+      "host_permissions": true,
+      "expect_host_action": "skipped_blocked"
+    },
+    {
+      "id": "weak_choice_abstain",
+      "proposal": {
+        "tool_name": "fs.read",
+        "arguments": {"path": "notes.txt"},
+        "choice_probabilities": {"fs.read": 0.52, "fs.delete": 0.48}
+      },
+      "signals": {
+        "authorized": 1.0,
+        "sufficient_context": 1.0,
+        "capability_present": 1.0
+      },
+      "planner": {"min_choice_probability": 0.60},
+      "expect_plan_status": "abstain",
+      "host_permissions": true,
+      "expect_host_action": "skipped_abstain"
+    },
+    {
+      "id": "host_acl_reject",
+      "proposal": {"tool_name": "fs.read", "arguments": {"path": "notes.txt"}},
+      "signals": {
+        "authorized": 0.95,
+        "sufficient_context": 0.9,
+        "capability_present": 0.92,
+        "confirmation_needed": 0.05
+      },
+      "expect_plan_status": "ready",
+      "host_permissions": false,
+      "expect_host_action": "rejected_by_host"
+    },
+    {
+      "id": "multi_cap_partial_block",
+      "catalog": "with_shell",
+      "proposal": {"tool_name": "shell.run", "arguments": {"cmd": "ls"}},
+      "signals": {
+        "authorized": 0.95,
+        "sufficient_context": 0.95,
+        "confirmation_given": true
+      },
+      "capability_signals": {"shell": 0.95, "network": 0.1},
+      "expect_plan_status": "blocked",
+      "expect_reason_substring": "network",
+      "host_permissions": true,
+      "expect_host_action": "skipped_blocked"
+    }
+  ]
+}

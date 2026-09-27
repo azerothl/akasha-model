@@ -53,7 +53,8 @@ class GateSignals:
     """Authorization / risk signals that feed the planner nouls and score.
 
     Probabilities are in ``[0, 1]``. When a capability is required by the
-    selected :class:`ToolSpec`, ``capability_present`` should be set.
+    selected :class:`ToolSpec`, set ``capability_present`` (AND of all caps)
+    and/or ``capability_signals`` (per-token map, preferred for multi-cap tools).
 
     ``budget_remaining`` is host-owned: the OS increments counters; when it
     reports a remaining budget ≤ 0 the gate returns ``blocked`` with reason
@@ -67,6 +68,7 @@ class GateSignals:
     risk: ScoreResult | None = None
     confirmation_given: bool = False
     budget_remaining: float | None = None
+    capability_signals: Mapping[str, float] | None = None
 
 
 def choice_from_proposal(
@@ -143,6 +145,9 @@ def evaluate_gate(
     }
     if signals.capability_present is not None:
         nouls["capability_present"] = signals.capability_present
+    if signals.capability_signals:
+        for cap, value in signals.capability_signals.items():
+            nouls[f"capability:{cap}"] = float(value)
     if signals.confirmation_needed is not None:
         nouls["confirmation_needed"] = signals.confirmation_needed
     return active.plan(
