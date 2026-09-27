@@ -47,6 +47,17 @@ jobs:
       - name: Outcomes calibration demo
         run: .venv/bin/python examples/gate/outcomes_demo.py --log data/gate/outcomes-ci.jsonl
 
+  rust-gate:
+    name: rust-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo test akasha-gate
+        run: cargo test -p akasha-gate
+
   games:
     name: games-smoke
     runs-on: ubuntu-latest
