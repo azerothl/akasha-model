@@ -18,6 +18,7 @@ from .primitives import (
     ScoreResult,
     choice_result,
 )
+from .catalog import CatalogPolicy, check_catalog_policy
 from .tool_calling import ToolCallPlan, ToolCallPlanner, ToolSpec
 
 # Default planner thresholds for the gate wedge. Documented in
@@ -108,6 +109,7 @@ def evaluate_gate(
     *,
     planner: ToolCallPlanner | None = None,
     choice: ChoiceResult | None = None,
+    catalog_policy: CatalogPolicy | None = None,
 ) -> ToolCallPlan:
     """Return a non-executing plan for a proposed tool call.
 
@@ -123,7 +125,13 @@ def evaluate_gate(
         Optional custom thresholds; defaults are conservative for a demo gate.
     choice:
         Optional precomputed Choice result (e.g. from a trained scorer).
+    catalog_policy:
+        Optional phase-3 allow/deny/placement constraints (see
+        :mod:`akasha_model.catalog`).
     """
+    blocked = check_catalog_policy(tools, proposal.tool_name, catalog_policy)
+    if blocked is not None:
+        return blocked
     active = planner or default_gate_planner()
     resolved = choice if choice is not None else choice_from_proposal(tools, proposal)
     if signals.budget_remaining is not None and signals.budget_remaining <= 0:
@@ -171,6 +179,7 @@ __all__ = [
     "DEFAULT_MIN_CHOICE_CONFIDENCE",
     "DEFAULT_MIN_CHOICE_PROBABILITY",
     "DEFAULT_NOUL_THRESHOLD",
+    "CatalogPolicy",
     "GateSignals",
     "ToolProposal",
     "choice_from_proposal",
