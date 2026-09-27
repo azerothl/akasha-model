@@ -103,6 +103,35 @@ Try the scripted scenarios:
 python examples/gate/demo.py
 ```
 
+### Invocation budgets (host-owned)
+
+The OS owns rate-limit counters. Pass the remaining allowance on each call:
+
+```python
+signals = GateSignals(
+    authorized=0.95,
+    sufficient_context=0.9,
+    capability_present=0.92,
+    budget_remaining=0,  # host says quota exhausted
+)
+plan = evaluate_gate(tools, proposal, signals)
+# plan.status == "blocked", plan.reason == "budget_exceeded"
+```
+
+When `budget_remaining` is omitted (`None`), the gate does not enforce a
+budget. The model never increments or resets counters.
+
+### Path A latency (measure, don't flake)
+
+```sh
+python examples/gate/bench_latency.py --iters 2000
+```
+
+Reports p50/p95 for `evaluate_gate` and `dispatch_plan` on the smoke catalog
+(CPU, no torch / no GPU). **Aspirational target:** p95 `evaluate_gate` < 5 ms
+for a small catalog on a modern CPU — gate ≪ System 2 proposal time. Treat the
+number as an SLO input for hosts, not a flaky CI fail gate.
+
 ---
 
 ## Path B — Gate with the tiny trained scorer
