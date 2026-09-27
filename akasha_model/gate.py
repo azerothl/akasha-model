@@ -114,6 +114,7 @@ def evaluate_gate(
     choice: ChoiceResult | None = None,
     catalog_policy: CatalogPolicy | None = None,
     authority_profile: AuthorityProfile | None = None,
+    request_id: str | None = None,
 ) -> ToolCallPlan:
     """Return a non-executing plan for a proposed tool call.
 
@@ -135,7 +136,12 @@ def evaluate_gate(
     authority_profile:
         Optional MIDAS-inspired profile for escalate / reject / clarify reason
         codes. Omitted → today's ``ready`` / ``abstain`` / ``blocked`` behaviour.
+    request_id:
+        Optional host idempotency key. Path A is stateless — the id is only
+        echoed via wire serializers / audit envelopes. Dedup storage is
+        host-owned.
     """
+    _ = request_id  # echoed by wire/audit helpers; planner remains stateless
     blocked = check_catalog_policy(tools, proposal.tool_name, catalog_policy)
     if blocked is not None:
         return blocked

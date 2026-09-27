@@ -469,6 +469,23 @@ vendor or run in-place. Multi-capability tools use
 `ToolSpec(required_capabilities=(...))` with optional per-token
 `GateSignals.capability_signals`.
 
+### Audit envelopes + request_id
+
+```python
+from akasha_model import build_audit_envelope, evaluate_gate, plan_to_dict
+
+plan = evaluate_gate(tools, proposal, signals, request_id="req-001")
+wire = plan_to_dict(plan, request_id="req-001")  # echoes id; model does not persist
+envelope = build_audit_envelope(
+    plan=plan, proposal=proposal, signals=signals, tools=tools, request_id="req-001",
+)
+# envelope.content_sha256 — hash-only integrity; OS may add signatures later
+```
+
+**Dedup is host-owned.** Retries from async daemons must use the same
+`request_id`; akasha-model only propagates the key. Persist envelopes next to
+outcomes JSONL; `suggest_threshold_updates` still never auto-writes `DEFAULT_*`.
+
 ---
 
 ## What this is not

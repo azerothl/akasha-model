@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/azerothl/akasha-model/schemas/gate-audit-envelope.schema.json",
+  "title": "GateAuditEnvelope",
+  "description": "Tamper-evident (hash-only) audit envelope for Path A evaluate/dispatch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "recorded_at",
+    "proposal",
+    "plan",
+    "content_sha256"
+  ],
+  "properties": {
+    "contract_version": { "type": "integer", "const": 1 },
+    "request_id": {
+      "type": ["string", "null"],
+      "description": "Host idempotency key; model is stateless and only echoes it."
+    },
+    "recorded_at": { "type": "string" },
+    "proposal": { "type": "object" },
+    "signals": { "type": ["object", "null"] },
+    "plan": { "$ref": "tool-call-plan.schema.json" },
+    "host_action": {
+      "type": ["string", "null"],
+      "enum": [
+        "executed",
+        "skipped_abstain",
+        "skipped_blocked",
+        "rejected_by_host",
+        null
+      ]
+    },
+    "host_reason": { "type": ["string", "null"] },
+    "tools": { "type": ["object", "null"] },
+    "content_sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "description": "SHA-256 hex of canonical JSON body excluding this field."
+    }
+  }
+}
