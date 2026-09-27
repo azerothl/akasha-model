@@ -321,7 +321,8 @@ false-positive or risky-failure pattern.
 - Not Jev/Laya parity on public typed-decisions leaderboards (different product
   goal: **tool authorization gate**)
 - The committed `gate-tiny.pt` is a **small demo** scorer on synthetic data —
-  train on your traffic before production
+  train on your traffic before production (see the **Production Path B
+  checklist** in [examples/gate/README.md](../examples/gate/README.md))
 
 ---
 
