@@ -190,6 +190,35 @@ Opt-in: omit `catalog_policy` for unconstrained catalogs (demos keep working).
 Stable blocked reason prefixes: `catalog_allowlist`, `catalog_denylist`,
 `catalog_placement`. Outcomes suggestions never auto-write these rules.
 
+### Authority profiles (optional)
+
+Optional MIDAS-inspired profiles distinguish **escalate** (human review),
+**reject** (hard deny), and **clarify** (missing context) without exploding the
+`ready` / `abstain` / `blocked` status enum. Statuses stay compatible; reasons
+gain stable prefixes when a profile is passed:
+
+| Prefix | Meaning | Typical status |
+|--------|---------|----------------|
+| `escalate:` | Consequence / authority over profile | `abstain` |
+| `reject:` | Hard deny (auth / risk / policy) | `blocked` |
+| `clarify:` | Missing context keys / low context | `abstain` |
+
+```python
+from akasha_model import AuthorityProfile, evaluate_gate
+
+profile = AuthorityProfile(
+    name="payments",
+    max_consequence=0.5,
+    required_context_keys=("user_id",),
+)
+plan = evaluate_gate(tools, proposal, signals, authority_profile=profile)
+```
+
+Omit `authority_profile` for today's behaviour. Profiles do not replace OS
+`check_permissions` or catalog allowlists. Wire-schema bump is needed only if
+hosts start parsing prefixes as a new enum (#12). Outcomes never auto-write
+`DEFAULT_*` or profile fields.
+
 ---
 
 ## Path B — Gate with the tiny trained scorer
