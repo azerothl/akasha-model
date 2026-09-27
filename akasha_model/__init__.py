@@ -44,9 +44,20 @@ from .outcomes import (
 from .tool_calling import ToolCallPlan, ToolCallPlanner, ToolSpec, validate_tool_arguments
 from .typed_decisions import convert_typed_row
 from .vision import CHESS_OPTION_IDS, DOOM_OPTION_IDS, TOTAL_OPTIONS, DoomScorerV2
+from .wire import (
+    CONTRACT_VERSION,
+    outcome_from_dict,
+    outcome_to_dict,
+    plan_from_dict,
+    plan_to_dict,
+    request_from_dict,
+    request_to_dict,
+    schema_path,
+)
 
 __all__ = [
     "CHESS_OPTION_IDS", "DOOM_OPTION_IDS", "TOTAL_OPTIONS", "DoomScorerV2",
+    "CONTRACT_VERSION",
     "ChoiceQuestion", "ChoiceResult", "DecisionRequest", "NoulQuestion",
     "NoulResult", "OptionSpec", "ScoreLevel", "ScoreQuestion", "ScoreResult",
     "DEFAULT_MAX_RISK_SCORE", "DEFAULT_MIN_CHOICE_CONFIDENCE",
@@ -57,8 +68,10 @@ __all__ = [
     "ToolCallPlanner", "ToolSpec", "append_outcome", "convert_typed_row",
     "default_gate_planner", "describe_outcome", "describe_plan",
     "dispatch_plan", "evaluate_gate", "grpo_loss", "load_decision_checkpoint",
-    "load_outcomes", "plan_scored_proposal", "record_from_host_outcome",
-    "run_gated_call", "run_scored_gated_call", "score_proposal",
+    "load_outcomes", "outcome_from_dict", "outcome_to_dict",
+    "plan_from_dict", "plan_scored_proposal", "plan_to_dict",
+    "record_from_host_outcome", "request_from_dict", "request_to_dict",
+    "run_gated_call", "run_scored_gated_call", "schema_path", "score_proposal",
     "suggest_threshold_updates", "summarize_outcomes",
     "validate_tool_arguments",
 ]

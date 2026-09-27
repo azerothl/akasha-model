@@ -1,0 +1,12 @@
+{
+  "contract_version": 1,
+  "status": "ready",
+  "tool_name": "fs.read",
+  "arguments": {"path": "notes.txt"},
+  "reason": "all planner gates passed",
+  "choice_probability": 0.9,
+  "choice_confidence": 0.531,
+  "risk_score": null,
+  "executable": true,
+  "request_id": "req-ready-001"
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/azerothl/akasha-model/schemas/host-outcome.schema.json",
+  "title": "HostOutcome",
+  "description": "Wire form of akasha_model.host.HostOutcome after dispatch_plan.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "action",
+    "plan",
+    "host_reason",
+    "did_execute"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bump only on breaking wire changes; see docs/contracts/README.md."
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "executed",
+        "skipped_abstain",
+        "skipped_blocked",
+        "rejected_by_host"
+      ]
+    },
+    "plan": {
+      "$ref": "tool-call-plan.schema.json"
+    },
+    "result": {
+      "description": "Host execute() return value when action is executed; otherwise null. JSON-serialisable values only on the wire."
+    },
+    "host_reason": { "type": "string" },
+    "did_execute": { "type": "boolean" },
+    "request_id": {
+      "type": ["string", "null"],
+      "description": "Echo of optional host idempotency key when provided."
+    }
+  }
+}

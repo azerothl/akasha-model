@@ -314,6 +314,32 @@ false-positive or risky-failure pattern.
 
 ---
 
+## Wire JSON contract (Rust / CLI bridges)
+
+Hosts that serialize plans over JSON (e.g. Akasha OS `aos-agent` → Python CLI)
+should use the package schemas and helpers instead of hand-rolled field names:
+
+| Piece | Location |
+|-------|----------|
+| Schemas | `akasha_model/schemas/*.schema.json` |
+| Helpers | `akasha_model.wire` (`plan_to_dict`, `outcome_to_dict`, `request_to_dict`, …) |
+| Version | `CONTRACT_VERSION` (currently `1`) on every envelope |
+| Goldens | `tests/contracts/fixtures/` |
+| Notes | [docs/contracts/README.md](contracts/README.md) |
+
+```python
+from akasha_model import evaluate_gate, plan_to_dict, CONTRACT_VERSION
+
+plan = evaluate_gate(tools, proposal, signals)
+wire = plan_to_dict(plan, request_id="req-001")
+assert wire["contract_version"] == CONTRACT_VERSION
+```
+
+Breaking renames require a version bump + migration note in
+`docs/contracts/README.md`.
+
+---
+
 ## What this is not
 
 - Not a chatbot that “sorts your email” end-to-end without a proposal + catalog
@@ -331,7 +357,8 @@ false-positive or risky-failure pattern.
 |------|----------|
 | Run demos / thresholds / go-no-go | [examples/gate/README.md](../examples/gate/README.md) |
 | Other concrete menus (triage, OS routing, checklist, ensemble, vision) | [use-cases.md](use-cases.md) |
-| Package API | `akasha_model.gate`, `gate_multitask`, `host`, `tool_calling` |
+| Package API | `akasha_model.gate`, `gate_multitask`, `host`, `tool_calling`, `wire` |
+| Wire schemas / Rust bridge | [contracts/README.md](contracts/README.md) · `akasha_model/schemas/` |
 | Host demo (fake OS) | `python examples/gate/host_demo.py` |
 | Outcomes / calibration | `python examples/gate/outcomes_demo.py` · `akasha_model.outcomes` |
 | Multitask / RLCD text training | Root [README.md](../README.md) |
