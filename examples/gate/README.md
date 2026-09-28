@@ -107,3 +107,65 @@ python examples/gate/outcomes_demo.py --log data/gate/outcomes.jsonl
 API: `append_outcome`, `record_from_host_outcome`, `summarize_outcomes`,
 `suggest_threshold_updates` (`akasha_model.outcomes`). Suggestions never
 auto-write new `DEFAULT_*` values — Path D in the user guide.
+
+## Production Path B checklist (beyond gate-tiny)
+
+The committed `examples/gate/checkpoints/gate-tiny.pt` is a **demo-only**
+scorer on synthetic data. It is **not** a competence claim for production
+authorize-tool-call traffic. Path B needs torch (`pip install 'akasha-model[torch]'`
+once #11 lands; until then a full install).
+
+### 1. Collect labeled authorize rows
+
+JSONL multitask rows (Choice / Score / Noul) for situations your host sees.
+Keep production data under `data/` (gitignored). Do **not** mix Hub
+typed-decisions leaderboard rows into the authorize train set.
+
+### 2. Anti-leakage split
+
+Split by disjoint context keys (e.g. `family:variant` / session / tool-family),
+not by random row shuffle. The synthetic generator already does this:
+
+```sh
+python examples/gate/generate_data.py --output data/gate
+```
+
+Reuse that discipline on real traffic: train / val / held-out test must not
+share the same situation identity. Keep `ToolCallPlanner` in the loop — do not
+replace it with an implicit tool executor.
+
+### 3. Train tiny path (no Hub download)
+
+```sh
+uv pip install -e '.[dev,torch]'   # or '.[dev]' on older releases that still bundle torch
+python examples/gate/generate_data.py --output data/gate
+python examples/gate/train_tiny.py --data data/gate --output runs/gate-prod.pt
+python examples/gate/scored_demo.py --checkpoint runs/gate-prod.pt
+```
+
+MASK+BERT / `akasha-rlcd-train` is optional when the tiny byte path fails your
+go/no-go matrix after calibration — not the default recipe. Stronger backbones
+are tracked only if this recipe fails (#26).
+
+### 4. Gate go/no-go on a held-out split
+
+Re-run the false-positive / false-negative matrix from the Defaults section
+above on **held-out** authorize traffic (not the training batch). Fail the
+release if safe reads are blocked or deletes without confirmation are `ready`.
+
+### 5. Choice head policy
+
+Default Path B peaks Choice on the System 2 proposal (`use_model_choice=False`).
+Turn `use_model_choice=True` only after the route head beats a strong baseline
+on held-out menus; otherwise the model can invent a different tool than the
+one proposed.
+
+### 6. Calibrate thresholds via outcomes (never auto-apply)
+
+```sh
+python examples/gate/outcomes_demo.py --log data/gate/outcomes.jsonl
+```
+
+Use `summarize_outcomes` / `suggest_threshold_updates` to propose moves to
+`DEFAULT_*`. A human (or OS config review) must apply changes — the package
+never silently rewrites defaults.
