@@ -50,6 +50,14 @@ from .outcomes import (
     summarize_outcomes,
 )
 from .tool_calling import ToolCallPlan, ToolCallPlanner, ToolSpec, validate_tool_arguments
+from .audit import (
+    GateAuditEnvelope,
+    build_audit_envelope,
+    content_hash,
+    envelope_from_dict,
+    envelope_to_dict,
+    verify_envelope,
+)
 from .wire import (
     CONTRACT_VERSION,
     outcome_from_dict,
@@ -83,7 +91,7 @@ _TORCH_EXPORTS = {
 
 __all__ = [
     "CHESS_OPTION_IDS", "DOOM_OPTION_IDS", "TOTAL_OPTIONS", "DoomScorerV2",
-    "CONTRACT_VERSION",
+    "CONTRACT_VERSION", "GateAuditEnvelope",
     "ChoiceQuestion", "ChoiceResult", "DecisionRequest", "NoulQuestion",
     "NoulResult", "OptionSpec", "ScoreLevel", "ScoreQuestion", "ScoreResult",
     "DEFAULT_MAX_RISK_SCORE", "DEFAULT_MIN_CHOICE_CONFIDENCE",
@@ -91,15 +99,17 @@ __all__ = [
     "AuthorityProfile", "CatalogPolicy", "DecisionModel", "MultiQuestionCollator",
     "MultiQuestionDataset", "MultiQuestionTinyScorer", "GateOutcomeRecord",
     "GateSignals", "HostOutcome", "ToolHost", "ToolProposal", "ToolCallPlan",
-    "ToolCallPlanner", "ToolSpec", "append_outcome", "check_catalog_policy",
-    "convert_typed_row", "default_gate_planner", "describe_outcome",
-    "describe_plan", "dispatch_plan", "evaluate_gate", "grpo_loss",
+    "ToolCallPlanner", "ToolSpec", "append_outcome", "build_audit_envelope",
+    "check_catalog_policy", "content_hash", "convert_typed_row",
+    "default_gate_planner", "describe_outcome", "describe_plan",
+    "dispatch_plan", "envelope_from_dict", "envelope_to_dict", "evaluate_gate",
+    "grpo_loss",
     "load_decision_checkpoint", "load_outcomes", "outcome_from_dict",
     "outcome_to_dict", "plan_from_dict", "plan_scored_proposal", "plan_to_dict",
     "record_from_host_outcome", "request_from_dict", "request_to_dict",
     "run_gated_call", "run_scored_gated_call", "schema_path", "score_proposal",
-    "suggest_threshold_updates", "summarize_outcomes",
-    "validate_tool_arguments",
+    "suggest_threshold_updates", "summarize_outcomes", "validate_tool_arguments",
+    "verify_envelope",
 ]
 
 

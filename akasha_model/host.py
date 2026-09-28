@@ -91,10 +91,15 @@ def run_gated_call(
     host: ToolHost,
     *,
     planner: ToolCallPlanner | None = None,
+    request_id: str | None = None,
 ) -> HostOutcome:
     """Evaluate the gate then dispatch to the host (scripted / explicit signals)."""
     plan = evaluate_gate(
-        tools, proposal, signals, planner=planner or default_gate_planner(),
+        tools,
+        proposal,
+        signals,
+        planner=planner or default_gate_planner(),
+        request_id=request_id,
     )
     return dispatch_plan(plan, host)
 
