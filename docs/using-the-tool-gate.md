@@ -167,6 +167,29 @@ Reports p50/p95 for `evaluate_gate` and `dispatch_plan` on the smoke catalog
 for a small catalog on a modern CPU — gate ≪ System 2 proposal time. Treat the
 number as an SLO input for hosts, not a flaky CI fail gate.
 
+### Catalog constraints (phase 3, optional)
+
+| Layer | Responsibility |
+|-------|----------------|
+| `CatalogPolicy` | Allow/deny tool names; required placement tags on a surface |
+| `ToolSpec` | Schema, capability, confirmation, irreversible |
+| OS `check_permissions` | Final ACL / grants — always required on `ready` |
+
+```python
+from akasha_model import CatalogPolicy, evaluate_gate
+
+policy = CatalogPolicy(
+    allowlist=frozenset({"fs.read", "fs.delete"}),
+    denylist=frozenset({"shell.run"}),
+    required_placement=frozenset({"preview"}),
+)
+plan = evaluate_gate(tools, proposal, signals, catalog_policy=policy)
+```
+
+Opt-in: omit `catalog_policy` for unconstrained catalogs (demos keep working).
+Stable blocked reason prefixes: `catalog_allowlist`, `catalog_denylist`,
+`catalog_placement`. Outcomes suggestions never auto-write these rules.
+
 ---
 
 ## Path B — Gate with the tiny trained scorer

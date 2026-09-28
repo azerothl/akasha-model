@@ -39,6 +39,7 @@ class ToolSpec:
     required_capabilities: tuple[str, ...] = ()
     requires_confirmation: bool = False
     irreversible: bool = False
+    placement_tags: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _non_empty(self.name, "tool name")
@@ -57,6 +58,8 @@ class ToolSpec:
         object.__setattr__(
             self, "required_capability", caps[0] if caps else None,
         )
+        for tag in self.placement_tags:
+            _non_empty(tag, "placement_tags item")
         if self.parameters is not None:
             if not isinstance(self.parameters, Mapping):
                 raise ValueError("tool parameters must be a JSON schema object")
