@@ -33,13 +33,29 @@ Statuses:
 
 ## Install
 
+**From a release tag (recommended for Akasha OS and other hosts):**
+
+```sh
+uv pip install "akasha-model @ git+https://github.com/azerothl/akasha-model.git@v0.2.0"
+```
+
+Pin the tag in your dependency file the same way. Prefer `@v0.2.0` (or a later
+`v*` tag) over long-lived feature branches such as `cursor/gate-host-*`.
+
+See [CHANGELOG.md](../CHANGELOG.md) for what each tag includes. Path A/C surface
+for integrators: `evaluate_gate`, `run_gated_call`, `HostOutcome`, `ToolHost`.
+
+**Editable checkout (development):**
+
 ```sh
 uv venv
 source .venv/bin/activate
 uv pip install -e '.[dev]'
 ```
 
-Python 3.10+ and PyTorch are required (see the root README).
+Python 3.10+ and PyTorch are required for a full install (see the root README).
+Path A with explicit `GateSignals` does not need a checkpoint; Path B scored
+calls do.
 
 ---
 
