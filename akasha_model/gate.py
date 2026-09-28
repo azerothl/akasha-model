@@ -54,6 +54,10 @@ class GateSignals:
 
     Probabilities are in ``[0, 1]``. When a capability is required by the
     selected :class:`ToolSpec`, ``capability_present`` should be set.
+
+    ``budget_remaining`` is host-owned: the OS increments counters; when it
+    reports a remaining budget ≤ 0 the gate returns ``blocked`` with reason
+    ``budget_exceeded``. ``None`` means “no budget policy supplied”.
     """
 
     authorized: float
@@ -62,6 +66,7 @@ class GateSignals:
     confirmation_needed: float | None = None
     risk: ScoreResult | None = None
     confirmation_given: bool = False
+    budget_remaining: float | None = None
 
 
 def choice_from_proposal(
@@ -119,6 +124,19 @@ def evaluate_gate(
     """
     active = planner or default_gate_planner()
     resolved = choice if choice is not None else choice_from_proposal(tools, proposal)
+    if signals.budget_remaining is not None and signals.budget_remaining <= 0:
+        probability = float(
+            resolved.probabilities.get(resolved.selected or "", 0.0)
+        ) if resolved.selected else 0.0
+        return ToolCallPlan(
+            "blocked",
+            proposal.tool_name if proposal.tool_name in tools else resolved.selected,
+            None,
+            "budget_exceeded",
+            probability,
+            resolved.confidence,
+            signals.risk.score if signals.risk else None,
+        )
     nouls: dict[str, float] = {
         "authorized": signals.authorized,
         "sufficient_context": signals.sufficient_context,
