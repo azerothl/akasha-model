@@ -1,0 +1,16 @@
+[package]
+name = "akasha-gate"
+version = "0.2.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Path A tool-gate planner for Akasha OS (no tool execution, no torch)."
+readme = "README.md"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[dev-dependencies]
+approx = "0.5"

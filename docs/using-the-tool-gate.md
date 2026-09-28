@@ -64,6 +64,10 @@ calls do.
 Use this when **you** already have authorization / risk scores (rules, another
 model, or tests). No checkpoint needed.
 
+Rust hosts (Akasha OS `aos-agent`) can call the same Path A logic in-process via
+the [`akasha-gate`](../crates/akasha-gate/) crate — see
+[docs/rust-gate.md](rust-gate.md). Path B scorers remain Python-only.
+
 ```python
 from akasha_model import (
     ToolSpec,
