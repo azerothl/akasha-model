@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/azerothl/akasha-model/schemas/tool-gate-request.schema.json",
+  "title": "ToolGateRequest",
+  "description": "Wire envelope for Path A evaluate_gate inputs (catalog + proposal + signals).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "tools", "proposal", "signals"],
+  "properties": {
+    "contract_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bump only on breaking wire changes; see docs/contracts/README.md."
+    },
+    "tools": {
+      "type": "object",
+      "minProperties": 2,
+      "additionalProperties": { "$ref": "#/$defs/tool_spec" }
+    },
+    "proposal": { "$ref": "#/$defs/tool_proposal" },
+    "signals": { "$ref": "#/$defs/gate_signals" },
+    "request_id": {
+      "type": ["string", "null"],
+      "description": "Optional host idempotency key; model is stateless and only echoes it."
+    }
+  },
+  "$defs": {
+    "tool_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "parameters": {
+          "type": ["object", "null"],
+          "description": "JSON Schema object describing tool arguments."
+        },
+        "required_capability": {
+          "type": ["string", "null"],
+          "description": "Deprecated single-cap alias; prefer required_capabilities."
+        },
+        "required_capabilities": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "requires_confirmation": { "type": "boolean" },
+        "irreversible": { "type": "boolean" }
+      }
+    },
+    "tool_proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_name"],
+      "properties": {
+        "tool_name": { "type": "string", "minLength": 1 },
+        "arguments": { "type": ["object", "null"] },
+        "choice_probabilities": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    },
+    "gate_signals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authorized", "sufficient_context"],
+      "properties": {
+        "authorized": { "type": "number", "minimum": 0, "maximum": 1 },
+        "sufficient_context": { "type": "number", "minimum": 0, "maximum": 1 },
+        "capability_present": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "confirmation_needed": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "confirmation_given": { "type": "boolean" },
+        "risk": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["score", "probabilities"],
+          "properties": {
+            "score": { "type": "number" },
+            "confidence": { "type": "number" },
+            "probabilities": {
+              "type": "object",
+              "additionalProperties": { "type": "number" }
+            },
+            "legend": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            "question_id": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

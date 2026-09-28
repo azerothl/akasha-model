@@ -42,6 +42,9 @@ akasha-typed-eval = "akasha_model.typed_decisions:main"
 [tool.setuptools.packages.find]
 include = ["akasha_model*"]
 
+[tool.setuptools.package-data]
+akasha_model = ["schemas/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["--import-mode=importlib"]

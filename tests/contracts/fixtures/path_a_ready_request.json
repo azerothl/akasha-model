@@ -1,0 +1,40 @@
+{
+  "contract_version": 1,
+  "tools": {
+    "fs.read": {
+      "name": "fs.read",
+      "description": "Read a workspace file.",
+      "parameters": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {"path": {"type": "string"}},
+        "additionalProperties": false
+      },
+      "required_capability": "workspace_access",
+      "requires_confirmation": false,
+      "irreversible": false
+    },
+    "fs.delete": {
+      "name": "fs.delete",
+      "description": "Delete a workspace file.",
+      "parameters": null,
+      "required_capability": "workspace_access",
+      "requires_confirmation": false,
+      "irreversible": true
+    }
+  },
+  "proposal": {
+    "tool_name": "fs.read",
+    "arguments": {"path": "notes.txt"},
+    "choice_probabilities": null
+  },
+  "signals": {
+    "authorized": 0.95,
+    "sufficient_context": 0.9,
+    "capability_present": 0.92,
+    "confirmation_needed": 0.05,
+    "confirmation_given": false,
+    "risk": null
+  },
+  "request_id": "req-ready-001"
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/azerothl/akasha-model/schemas/tool-call-plan.schema.json",
+  "title": "ToolCallPlan",
+  "description": "Wire form of akasha_model.tool_calling.ToolCallPlan (never executes).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "status",
+    "tool_name",
+    "arguments",
+    "reason",
+    "choice_probability",
+    "choice_confidence",
+    "risk_score",
+    "executable"
+  ],
+  "properties": {
+    "contract_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bump only on breaking wire changes; see docs/contracts/README.md."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ready", "abstain", "blocked"]
+    },
+    "tool_name": { "type": ["string", "null"] },
+    "arguments": { "type": ["object", "null"] },
+    "reason": { "type": "string" },
+    "choice_probability": { "type": "number" },
+    "choice_confidence": { "type": "number" },
+    "risk_score": { "type": ["number", "null"] },
+    "executable": {
+      "type": "boolean",
+      "description": "True iff status == ready. Hosts must still run check_permissions."
+    },
+    "request_id": {
+      "type": ["string", "null"],
+      "description": "Echo of optional host idempotency key when provided."
+    }
+  }
+}

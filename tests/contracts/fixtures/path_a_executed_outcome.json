@@ -1,0 +1,20 @@
+{
+  "contract_version": 1,
+  "action": "executed",
+  "plan": {
+    "contract_version": 1,
+    "status": "ready",
+    "tool_name": "fs.read",
+    "arguments": {"path": "notes.txt"},
+    "reason": "all planner gates passed",
+    "choice_probability": 0.9,
+    "choice_confidence": 0.531,
+    "risk_score": null,
+    "executable": true,
+    "request_id": "req-ready-001"
+  },
+  "result": {"ok": true},
+  "host_reason": "host executed after ready and permission check",
+  "did_execute": true,
+  "request_id": "req-ready-001"
+}
