@@ -29,6 +29,19 @@ Statuses:
 | `abstain` | Low confidence / unclear choice | Ask the user, or ask System 2 to reformulate |
 | `blocked` | Policy / risk / schema / capability | Do **not** execute; show `plan.reason` |
 
+### Fail-closed under injection
+
+Path A is a **deterministic** policy-enforcement point. Natural language in
+tool arguments, catalog descriptions, or pasted prior tool outputs **cannot**
+change `GateSignals`, grant capabilities, skip confirmation, or force
+`ready`. Only typed signals + catalog schema + planner thresholds matter.
+
+Red-team fixtures (must stay `blocked` / `abstain` under honest deny signals):
+
+```sh
+pytest -q tests/adversarial/
+```
+
 ---
 
 ## Install
