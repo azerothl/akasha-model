@@ -25,19 +25,38 @@ def _non_empty(value: str, name: str) -> str:
 
 @dataclass(frozen=True)
 class ToolSpec:
-    """Description of one callable tool known by the host application."""
+    """Description of one callable tool known by the host application.
+
+    Prefer ``required_capabilities`` (zero or more tokens). The singular
+    ``required_capability`` field remains as a backward-compatible alias for
+    the first listed capability (or ``None`` when the tuple is empty).
+    """
 
     name: str
     description: str = ""
     parameters: Mapping[str, Any] | None = None
     required_capability: str | None = None
+    required_capabilities: tuple[str, ...] = ()
     requires_confirmation: bool = False
     irreversible: bool = False
 
     def __post_init__(self) -> None:
         _non_empty(self.name, "tool name")
+        caps: list[str] = []
+        if self.required_capabilities:
+            for cap in self.required_capabilities:
+                _non_empty(cap, "required_capabilities item")
+                if cap not in caps:
+                    caps.append(cap)
         if self.required_capability is not None:
             _non_empty(self.required_capability, "required_capability")
+            if self.required_capability not in caps:
+                caps.insert(0, self.required_capability)
+        # Normalise both fields so hosts can read either shape.
+        object.__setattr__(self, "required_capabilities", tuple(caps))
+        object.__setattr__(
+            self, "required_capability", caps[0] if caps else None,
+        )
         if self.parameters is not None:
             if not isinstance(self.parameters, Mapping):
                 raise ValueError("tool parameters must be a JSON schema object")
@@ -191,12 +210,23 @@ class ToolCallPlanner:
                     "blocked", spec.name, None, message, probability,
                     choice.confidence, score.score if score else None,
                 )
-        if spec.required_capability:
-            gate = _probability(nouls, "capability_present")
-            if gate is None or gate < self.noul_threshold:
+        if spec.required_capabilities:
+            # Hosts may AND all caps into ``capability_present``, and/or supply
+            # per-capability nouls named ``capability:<token>``.
+            missing: list[str] = []
+            for cap in spec.required_capabilities:
+                per_cap = _probability(nouls, f"capability:{cap}")
+                if per_cap is not None:
+                    if per_cap < self.noul_threshold:
+                        missing.append(cap)
+                    continue
+                shared = _probability(nouls, "capability_present")
+                if shared is None or shared < self.noul_threshold:
+                    missing.append(cap)
+            if missing:
                 return ToolCallPlan(
                     "blocked", spec.name, None,
-                    f"required capability is not positive: {spec.required_capability}",
+                    "required capability is not positive: " + ", ".join(missing),
                     probability, choice.confidence, score.score if score else None,
                 )
         confirmation_needed = spec.requires_confirmation or spec.irreversible

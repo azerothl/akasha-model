@@ -402,6 +402,21 @@ assert wire["contract_version"] == CONTRACT_VERSION
 Breaking renames require a version bump + migration note in
 `docs/contracts/README.md`.
 
+### Running contract tests as a host integrator
+
+Path A matrix fixtures (catalog → plan status → `dispatch_plan` action) live
+under `tests/contracts/` and do not require torch:
+
+```sh
+uv pip install -e '.[dev]'   # or '.[dev,torch]' if you already use the full package
+pytest -q tests/contracts/
+```
+
+`tests/contracts/fixtures/path_a_matrix.json` is the published suite OS CI can
+vendor or run in-place. Multi-capability tools use
+`ToolSpec(required_capabilities=(...))` with optional per-token
+`GateSignals.capability_signals`.
+
 ---
 
 ## What this is not

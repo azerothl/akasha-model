@@ -72,6 +72,11 @@
         "capability_present": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
         "confirmation_needed": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
         "confirmation_given": { "type": "boolean" },
+        "capability_signals": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 },
+          "description": "Per-capability nouls for multi-cap ToolSpec entries."
+        },
         "risk": {
           "type": ["object", "null"],
           "additionalProperties": false,

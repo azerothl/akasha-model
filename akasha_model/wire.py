@@ -37,6 +37,7 @@ def tool_spec_to_dict(spec: ToolSpec) -> dict[str, Any]:
         "description": spec.description,
         "parameters": dict(spec.parameters) if spec.parameters is not None else None,
         "required_capability": spec.required_capability,
+        "required_capabilities": list(spec.required_capabilities),
         "requires_confirmation": spec.requires_confirmation,
         "irreversible": spec.irreversible,
     }
@@ -44,11 +45,14 @@ def tool_spec_to_dict(spec: ToolSpec) -> dict[str, Any]:
 
 def tool_spec_from_dict(data: Mapping[str, Any]) -> ToolSpec:
     """Parse a wire tool catalog entry into :class:`ToolSpec`."""
+    caps_raw = data.get("required_capabilities") or ()
+    caps = tuple(str(item) for item in caps_raw)
     return ToolSpec(
         name=str(data["name"]),
         description=str(data.get("description") or ""),
         parameters=data.get("parameters"),
         required_capability=data.get("required_capability"),
+        required_capabilities=caps,
         requires_confirmation=bool(data.get("requires_confirmation", False)),
         irreversible=bool(data.get("irreversible", False)),
     )
@@ -118,6 +122,11 @@ def signals_to_dict(signals: GateSignals) -> dict[str, Any]:
         ),
         "confirmation_given": bool(signals.confirmation_given),
         "risk": _risk_to_dict(signals.risk),
+        "capability_signals": (
+            None
+            if signals.capability_signals is None
+            else {str(k): float(v) for k, v in signals.capability_signals.items()}
+        ),
     }
 
 
@@ -129,6 +138,7 @@ def signals_from_dict(data: Mapping[str, Any]) -> GateSignals:
         confirmation_needed=data.get("confirmation_needed"),
         risk=_risk_from_dict(data.get("risk")),
         confirmation_given=bool(data.get("confirmation_given", False)),
+        capability_signals=data.get("capability_signals"),
     )
 
 
