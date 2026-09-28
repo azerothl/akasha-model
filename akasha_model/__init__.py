@@ -21,6 +21,7 @@ from .primitives import (
     ScoreQuestion,
     ScoreResult,
 )
+from .authority import AuthorityProfile
 from .catalog import CatalogPolicy, check_catalog_policy
 from .gate import (
     DEFAULT_MAX_RISK_SCORE,
@@ -87,7 +88,7 @@ __all__ = [
     "NoulResult", "OptionSpec", "ScoreLevel", "ScoreQuestion", "ScoreResult",
     "DEFAULT_MAX_RISK_SCORE", "DEFAULT_MIN_CHOICE_CONFIDENCE",
     "DEFAULT_MIN_CHOICE_PROBABILITY", "DEFAULT_NOUL_THRESHOLD",
-    "CatalogPolicy", "DecisionModel", "MultiQuestionCollator",
+    "AuthorityProfile", "CatalogPolicy", "DecisionModel", "MultiQuestionCollator",
     "MultiQuestionDataset", "MultiQuestionTinyScorer", "GateOutcomeRecord",
     "GateSignals", "HostOutcome", "ToolHost", "ToolProposal", "ToolCallPlan",
     "ToolCallPlanner", "ToolSpec", "append_outcome", "check_catalog_policy",

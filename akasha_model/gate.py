@@ -18,6 +18,7 @@ from .primitives import (
     ScoreResult,
     choice_result,
 )
+from .authority import AuthorityProfile, apply_authority_profile
 from .catalog import CatalogPolicy, check_catalog_policy
 from .tool_calling import ToolCallPlan, ToolCallPlanner, ToolSpec
 
@@ -70,6 +71,8 @@ class GateSignals:
     confirmation_given: bool = False
     budget_remaining: float | None = None
     capability_signals: Mapping[str, float] | None = None
+    consequence: float | None = None
+    context: Mapping[str, object] | None = None
 
 
 def choice_from_proposal(
@@ -110,6 +113,7 @@ def evaluate_gate(
     planner: ToolCallPlanner | None = None,
     choice: ChoiceResult | None = None,
     catalog_policy: CatalogPolicy | None = None,
+    authority_profile: AuthorityProfile | None = None,
 ) -> ToolCallPlan:
     """Return a non-executing plan for a proposed tool call.
 
@@ -128,6 +132,9 @@ def evaluate_gate(
     catalog_policy:
         Optional phase-3 allow/deny/placement constraints (see
         :mod:`akasha_model.catalog`).
+    authority_profile:
+        Optional MIDAS-inspired profile for escalate / reject / clarify reason
+        codes. Omitted → today's ``ready`` / ``abstain`` / ``blocked`` behaviour.
     """
     blocked = check_catalog_policy(tools, proposal.tool_name, catalog_policy)
     if blocked is not None:
@@ -158,13 +165,22 @@ def evaluate_gate(
             nouls[f"capability:{cap}"] = float(value)
     if signals.confirmation_needed is not None:
         nouls["confirmation_needed"] = signals.confirmation_needed
-    return active.plan(
+    plan = active.plan(
         resolved,
         tools,
         arguments=proposal.arguments,
         nouls=nouls,
         score=signals.risk,
         confirmation_given=signals.confirmation_given,
+    )
+    return apply_authority_profile(
+        plan,
+        profile=authority_profile,
+        authorized=signals.authorized,
+        sufficient_context=signals.sufficient_context,
+        risk_score=signals.risk.score if signals.risk else None,
+        consequence=signals.consequence,
+        context=signals.context,
     )
 
 
@@ -179,6 +195,7 @@ __all__ = [
     "DEFAULT_MIN_CHOICE_CONFIDENCE",
     "DEFAULT_MIN_CHOICE_PROBABILITY",
     "DEFAULT_NOUL_THRESHOLD",
+    "AuthorityProfile",
     "CatalogPolicy",
     "GateSignals",
     "ToolProposal",
