@@ -116,8 +116,9 @@ auto-write new `DEFAULT_*` values — Path D in the user guide.
 
 The committed `examples/gate/checkpoints/gate-tiny.pt` is a **demo-only**
 scorer on synthetic data. It is **not** a competence claim for production
-authorize-tool-call traffic. Path B needs torch (`pip install 'akasha-model[torch]'`
-once #11 lands; until then a full install).
+authorize-tool-call traffic. Install Path A with `uv pip install -e '.[dev]'`
+(no torch). Path B scored demos and training need
+`uv pip install -e '.[dev,torch]'` (or `pip install 'akasha-model[torch]'`).
 
 ### 1. Collect labeled authorize rows
 
@@ -141,7 +142,7 @@ replace it with an implicit tool executor.
 ### 3. Train tiny path (no Hub download)
 
 ```sh
-uv pip install -e '.[dev,torch]'   # or '.[dev]' on older releases that still bundle torch
+uv pip install -e '.[dev,torch]'
 python examples/gate/generate_data.py --output data/gate
 python examples/gate/train_tiny.py --data data/gate --output runs/gate-prod.pt
 python examples/gate/scored_demo.py --checkpoint runs/gate-prod.pt
