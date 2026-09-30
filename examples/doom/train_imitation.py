@@ -70,7 +70,7 @@ def main() -> None:
     parser.add_argument("--no-mirror", action="store_true")
     parser.add_argument("--class-balance", action="store_true",
                         help="inverse-frequency CE; natural action frequencies work better here")
-    parser.add_argument("--device", choices=("cpu", "mps"), default="mps")
+    parser.add_argument("--device", choices=("cpu", "mps", "cuda"), default="mps")
     parser.add_argument("--seed", type=int, default=71)
     args = parser.parse_args()
     torch.manual_seed(args.seed)

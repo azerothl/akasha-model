@@ -18,7 +18,7 @@ PYTHONPATH=examples/doom pytest -q examples/doom/test_smoke.py
 Path A only (no torch): `uv pip install -e '.[dev]'` then
 `pytest -q tests/test_gate_path_a.py`.
 
-The top-level README quickstart is the release test. Run it exactly before changing its commands. Core text code must keep working on CPU, MPS and CUDA. Game scripts are intentionally small and may need a new command-line device choice before using CUDA.
+The top-level README quickstart is the release test. Run it exactly before changing its commands. Core text code must keep working on CPU, MPS and CUDA. Game device flags and Stockfish PATH are specified in [docs/games-cuda-stockfish.md](docs/games-cuda-stockfish.md).
 
 The MASK+BERT path (`akasha_model.decision`, `akasha-rlcd-train`) trains the encoder. CPU tests use the tiny MASK encoder, not a Hub download. `ToolCallPlanner` and the Akasha OS anti-leakage splits stay in the loop: do not replace them with an implicit tool executor, and do not reshuffle official typed-decisions train/test splits.
 
@@ -39,7 +39,7 @@ Run `audit.py` after each useful checkpoint. It compares the policy on real, bla
 
 ## Chess
 
-Install Stockfish and put its executable on `PATH`. Run commands from `examples/chess`.
+Install Stockfish and put its executable on `PATH` (see [docs/games-cuda-stockfish.md](docs/games-cuda-stockfish.md)). Run commands from `examples/chess`.
 
 - `positions.py` makes Stockfish-labelled positions.
 - `train.py` turns teacher moves into cursor-key sequences and trains rows 7–11.

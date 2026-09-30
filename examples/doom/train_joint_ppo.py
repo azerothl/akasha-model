@@ -249,7 +249,7 @@ def main() -> None:
     parser.add_argument("--doom-episodes-per-update", type=int, default=32)
     parser.add_argument("--chess-steps", type=int, default=32)
     parser.add_argument("--chess-batch-size", type=int, default=128)
-    parser.add_argument("--device", choices=("cpu", "mps"), default="mps")
+    parser.add_argument("--device", choices=("cpu", "mps", "cuda"), default="mps")
     parser.add_argument("--seed", type=int, default=59)
     parser.add_argument("--learning-rate", type=float, dest="doom_learning_rate", default=1e-4,
                         help="learning rate for Doom PPO updates")

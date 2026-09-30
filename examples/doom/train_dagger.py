@@ -53,7 +53,7 @@ def main() -> None:
                         help="option-conditioned visual reads; defaults to source checkpoint")
     parser.add_argument("--read-init-noise", type=float, default=0.01,
                         help="symmetry-breaking noise for newly added cloned reads")
-    parser.add_argument("--device", choices=("cpu", "mps"), default="mps")
+    parser.add_argument("--device", choices=("cpu", "mps", "cuda"), default="mps")
     parser.add_argument("--seed", type=int, default=97)
     args = parser.parse_args()
     if not 0 <= args.student_rollout_probability <= 1:

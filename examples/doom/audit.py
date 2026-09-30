@@ -189,7 +189,7 @@ def main() -> None:
     parser.add_argument("--frames", type=int, default=300)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--seed", type=int, default=1702)
-    parser.add_argument("--device", choices=("cpu", "mps"), default="mps")
+    parser.add_argument("--device", choices=("cpu", "mps", "cuda"), default="mps")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--greedy", action="store_true")
     args = parser.parse_args()

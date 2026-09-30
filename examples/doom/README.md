@@ -45,7 +45,8 @@ python examples/doom/train_ppo.py \
   --output runs/doom-ppo.pt
 ```
 
-Use `--device mps` on Apple silicon. CUDA works through PyTorch, but these small scripts currently expose only CPU and MPS in their command-line choices; adding a CUDA choice requires no model change.
+Use `--device mps` on Apple silicon or `--device cuda` on NVIDIA. Device flags,
+defaults, and Stockfish (chess) notes: [docs/games-cuda-stockfish.md](../../docs/games-cuda-stockfish.md).
 
 ## Audit screen dependence
 

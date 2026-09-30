@@ -50,7 +50,7 @@ def main() -> None:
     parser.add_argument("--eval-every", type=int, default=50)
     parser.add_argument("--heldout-size", type=int, default=1000)
     parser.add_argument("--student-probability", type=float, default=0.5)
-    parser.add_argument("--device", choices=("cpu", "mps"), default="mps")
+    parser.add_argument("--device", choices=("cpu", "mps", "cuda"), default="mps")
     parser.add_argument("--seed", type=int, default=163)
     args = parser.parse_args()
     torch.manual_seed(args.seed)

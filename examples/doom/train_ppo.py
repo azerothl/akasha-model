@@ -100,7 +100,7 @@ def main() -> None:
     parser.add_argument("--episodes-per-update", type=int, default=64)
     parser.add_argument("--scenario", choices=("defend_the_center", "deadly_corridor"),
                         default="defend_the_center")
-    parser.add_argument("--device", choices=("cpu", "mps"), default="mps")
+    parser.add_argument("--device", choices=("cpu", "mps", "cuda"), default="mps")
     parser.add_argument("--seed", type=int, default=19)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--ppo-epochs", type=int, default=3)

@@ -24,7 +24,7 @@ def main() -> None:
     parser.add_argument("checkpoint", type=Path)
     parser.add_argument("--episodes", type=int, default=100)
     parser.add_argument("--game-seconds", type=float, default=60.0)
-    parser.add_argument("--device", choices=("cpu", "mps"), default="mps")
+    parser.add_argument("--device", choices=("cpu", "mps", "cuda"), default="mps")
     parser.add_argument("--capture-resolution", choices=("160x120", "640x480"),
                         default="640x480")
     parser.add_argument("--output", type=Path)
