@@ -19,7 +19,11 @@ uv venv
 source .venv/bin/activate
 uv pip install -e '.[dev,games]'
 # Install Stockfish with your platform's package manager and put it on PATH.
+# Verify: command -v stockfish
 ```
+
+Device flags (`--device cpu|mps|cuda`) and Stockfish PATH details:
+[docs/games-cuda-stockfish.md](../../docs/games-cuda-stockfish.md).
 
 Run the scripts from this directory. They import the shared network from the installed `akasha_model` package.
 

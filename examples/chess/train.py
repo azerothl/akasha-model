@@ -56,8 +56,10 @@ def main() -> None:
     parser.add_argument("--dagger", type=float, default=0.5,
                         help="fraction of each batch drawn from runs/dagger states")
     parser.add_argument("--width", type=int, default=32, help="32 matches the Doom checkpoints")
+    parser.add_argument("--device", default="mps",
+                        help="torch device string: cpu, mps, or cuda")
     args = parser.parse_args()
-    device = torch.device("mps")
+    device = torch.device(args.device)
     torch.manual_seed(0)
     model = DoomScorerV2(actions=TOTAL_OPTIONS, width=args.width, rank=args.width)
     if args.init:
