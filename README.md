@@ -1,24 +1,24 @@
 # Akasha Model
 
-Train a small one-pass model that chooses among a changing list of typed options.
+Train a small one-pass model that chooses among a changing list of typed options. For Akasha OS the primary product surface is the **tool gate** (authorize / abstain / block a proposed call) — not a general-purpose System 1 clone.
 
 Akasha Model takes a piece of state (text or JSON) and a list of questions. Each question is `choice`, `score` or `noul`. It returns one probability distribution per question in a single forward pass, instead of writing an answer word by word.
 
-The public comparison for this shape of model is TypeSafe [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev). TypeSafe has not published its design. This repository is the decision scorer for Akasha OS: independent weights, independent training, and a deterministic tool-call planner that never executes side effects.
+The public comparison for this shape of model is TypeSafe [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev). TypeSafe has not published its design. This repository is independent for Akasha OS: Path A gate / host / outcomes (no torch), optional Path B scorers, and a deterministic tool-call planner that never executes side effects.
 
-**Using the tool gate (authorize / abstain / block before your host runs a tool):** see [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md) and [examples/gate](examples/gate/README.md). Host: `akasha_model.host` (`run_gated_call`); outcomes: `akasha_model.outcomes` (`python examples/gate/outcomes_demo.py`).
+**Using the tool gate (authorize / abstain / block before your host runs a tool):** see [docs/using-the-tool-gate.md](https://github.com/azerothl/akasha-model/blob/main/docs/using-the-tool-gate.md) and [examples/gate](https://github.com/azerothl/akasha-model/tree/main/examples/gate). Host: `akasha_model.host` (`run_gated_call`); outcomes: `akasha_model.outcomes` (`python examples/gate/outcomes_demo.py` from a checkout). Optional Path A extras on main: `CatalogPolicy`, `AuthorityProfile`, wire JSON (`akasha_model.wire`), and audit envelopes (`akasha_model.audit`).
 
-**Stable pin for OS consumers:** `pip install akasha-model==0.2.0` ([PyPI](https://pypi.org/project/akasha-model/)) or `git+https://github.com/azerothl/akasha-model.git@v0.2.0` — see [CHANGELOG.md](CHANGELOG.md). Prefer release tags over feature branches. Path A (gate/host/outcomes) installs without torch; add the `[torch]` extra for Path B scorers, training, and vision.
+**Stable pin for OS consumers:** `pip install akasha-model==0.2.0` ([PyPI](https://pypi.org/project/akasha-model/)) or `git+https://github.com/azerothl/akasha-model.git@v0.2.0` — see [CHANGELOG.md](https://github.com/azerothl/akasha-model/blob/main/CHANGELOG.md). Prefer release tags over feature branches. Path A (gate/host/outcomes/wire) installs without torch; add the `[torch]` extra for Path B scorers, training, and vision. The PyPI wheel/sdist ship the `akasha_model` package and CLIs only — examples, checkpoints, `docs/`, and `scripts/` stay in the [GitHub repository](https://github.com/azerothl/akasha-model); clone (or `uv pip install -e '.[…]'` from a checkout) for demos and the commands below that reference those paths.
 
-**Concrete use cases beyond the gate** (support triage, OS action menus, multi-signal checklists, ensemble abstention, Wikispeedia, vision lab): [docs/use-cases.md](docs/use-cases.md).
+**Concrete use cases beyond the gate** (support triage, OS action menus, multi-signal checklists, ensemble abstention, Wikispeedia, vision lab): [docs/use-cases.md](https://github.com/azerothl/akasha-model/blob/main/docs/use-cases.md).
 
 ## Demo
 
-The same option-attention head can score controller buttons from image patches. [This ten-second film](docs/jevre-demo-10s-bgm.mp4) joins two selected five-second windows: live `deadly_corridor` combat on the seven Doom buttons, then a chess controller walking to and playing moves with five keys. The diagram shows the tensors used for each decision. The Doom window came from the supplied joint checkpoint, which averaged 0.60 kills and -97.50 reward across its ten recorded episodes. The chess window came from the stronger chess-only checkpoint, which scored 4 wins, 46 draws and 0 losses in 50 sampled games against a random mover, but 0 wins, 2 draws and 48 losses against Stockfish level 0. The windows were selected for activity and are not typical-play or competence claims.
+The same option-attention head can score controller buttons from image patches. [This ten-second film](https://github.com/azerothl/akasha-model/blob/main/docs/jevre-demo-10s-bgm.mp4) joins two selected five-second windows: live `deadly_corridor` combat on the seven Doom buttons, then a chess controller walking to and playing moves with five keys. The [tensor diagram](https://github.com/azerothl/akasha-model/blob/main/examples/film/diagram.svg) shows the tensors used for each decision. The Doom window came from the supplied joint checkpoint, which averaged 0.60 kills and -97.50 reward across its ten recorded episodes. The chess window came from the stronger chess-only checkpoint, which scored 4 wins, 46 draws and 0 losses in 50 sampled games against a random mover, but 0 wins, 2 draws and 48 losses against Stockfish level 0. The windows were selected for activity and are not typical-play or competence claims.
 
 <video src="docs/jevre-demo-10s-bgm.mp4" controls width="960"></video>
 
-Install the game extras and record a fresh 640 by 480 Doom trace from the released joint checkpoint:
+From a repository checkout, install the game extras and record a fresh 640 by 480 Doom trace from the released joint checkpoint:
 
 ```sh
 uv pip install -e '.[games]'
@@ -32,19 +32,21 @@ Render the trace in the same visual layout. This writes a silent film because th
 examples/film/make-film.sh runs/doom-trace.json runs/doom-film.mp4 10
 ```
 
-The release includes the [Doom example](examples/doom/README.md), the [chess example](examples/chess/README.md), the single-game checkpoints and the shared 12-option checkpoint. Both games import the visual scorer from `akasha_model.vision`; there is no second model copy in either example.
+The repository includes the [Doom example](examples/doom/README.md), the [chess example](examples/chess/README.md), the single-game checkpoints and the shared 12-option checkpoint (not packaged on PyPI). Both games import the visual scorer from `akasha_model.vision`; there is no second model copy in either example.
 
 ## Architecture
 
-The production text path encodes each question as one MASK-marker sequence:
+The production text path encodes each question as one MASK-marker sequence. Default layout is **schema-first** (`--mask-layout schema_first`):
 
 ```
 [CLS] choice question: <instructions> [SEP] [MASK] opt0 [MASK] opt1 ... [SEP] <state> [SEP]
 ```
 
+`--mask-layout state_first` puts the state before the question/options; `--mask-layout mix` trains both so one checkpoint can serve either. Eval and serving should stay on `schema_first` unless you intentionally trained otherwise.
+
 A bidirectional encoder (tiny transformer, or a **trained** BERT such as `bert-base-uncased` / ModernBERT) reads the whole sequence. A shared scorer reads the hidden state at each `[MASK]` and returns one logit per option. `choice`, `score` and `noul` share that head; noul is the two-way pair `false` / `true`.
 
-The encoder is trained, not frozen. Options are written before the state, so a full option block can truncate the context: keep `--max-len` larger than `--head-max-len` (768 for the tiny encoder; **512 for `bert-base-uncased`**, which cannot index longer sequences). High-cardinality menus also keep `--option-max-len`; raise `--head-max-len` when a question has dozens of options.
+The encoder is trained, not frozen. Under schema-first, options are written before the state, so a full option block can truncate the context: keep `--max-len` larger than `--head-max-len` (768 for the tiny encoder; **512 for `bert-base-uncased`**, which cannot index longer sequences). High-cardinality menus also keep `--option-max-len`; raise `--head-max-len` when a question has dozens of options.
 
 A cheaper byte-encoder scorer remains available for CPU smoke tests and the original JSONL choice format.
 
@@ -101,9 +103,11 @@ The host-facing helper is `evaluate_gate` (and `plan_scored_proposal` when a
 multitask scorer fills Choice / Score / Noul). Default thresholds live in
 `akasha_model.gate` (`DEFAULT_MIN_CHOICE_PROBABILITY=0.55`,
 `DEFAULT_MIN_CHOICE_CONFIDENCE=0.50`, `DEFAULT_NOUL_THRESHOLD=0.70`,
-`DEFAULT_MAX_RISK_SCORE=1.5`). See [examples/gate](examples/gate/README.md) for
-the scripted demo, authorize-tool-call JSONL, tiny train loop, and go/no-go
-checks on false positives.
+`DEFAULT_MAX_RISK_SCORE=1.5`). Optional Path A layers: `CatalogPolicy`,
+`AuthorityProfile`, `akasha_model.wire` / `CONTRACT_VERSION`, and
+`build_audit_envelope`. See [examples/gate](examples/gate/README.md) for the
+scripted demo, authorize-tool-call JSONL, tiny train loop, and go/no-go checks
+on false positives.
 
 ```python
 from akasha_model import ToolCallPlanner, ToolSpec, evaluate_gate, ToolProposal, GateSignals
@@ -224,7 +228,7 @@ The evaluation prints top-1 accuracy, which is the fraction of correct first cho
 
 ## Calibrate a trained model
 
-Use a separate calibration split that was not used to train or select the model. Temperature scaling changes the sharpness of the probabilities without changing the ranking of the options:
+Use a separate calibration split that was not used to train or select the model. Temperature scaling changes the sharpness of the probabilities without changing the ranking of the options. Single-choice checkpoints use `akasha-calibrate`; byte multitask checkpoints use `akasha-multitask-calibrate`.
 
 ```sh
 akasha-calibrate runs/synthetic.pt data/synthetic/validation.jsonl \
@@ -302,7 +306,7 @@ The command abstains when the ensemble disagrees or when its mean confidence is 
 2. Keep all options that the model will see at prediction time in each row.
 3. Split related records together. For example, keep all records for one customer or one target page in one split. This prevents near-duplicates from leaking into the test set.
 4. Run `akasha-train` (single-choice JSONL), `akasha-multitask-train` (byte Choice/Score/Noul) or `akasha-rlcd-train` (MASK+RLCD) with your train and validation files.
-5. Evaluate once on a held-out test file that was never used for training or model selection. Use `akasha-eval` for single-choice checkpoints, `akasha-multitask-eval` for the byte multitask scorer, and `akasha-typed-eval --data` for MASK/RLCD checkpoints.
+5. Evaluate once on a held-out test file that was never used for training or model selection. Use `akasha-eval` for single-choice checkpoints, `akasha-multitask-eval` for the byte multitask scorer, and `akasha-typed-eval --data` for MASK/RLCD checkpoints. Calibrate with `akasha-calibrate` or `akasha-multitask-calibrate` when you have a held-out calibration split.
 
 The default byte encoder truncates context to 192 bytes and each option to 32 bytes. Raise `--context-tokens` or `--option-tokens` when your text needs more room. Training supports CPU, Apple MPS for a Mac GPU, and CUDA for an NVIDIA GPU through `--device`.
 
