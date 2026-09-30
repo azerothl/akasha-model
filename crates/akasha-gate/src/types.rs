@@ -24,6 +24,8 @@ pub struct ToolSpec {
     pub requires_confirmation: bool,
     #[serde(default)]
     pub irreversible: bool,
+    #[serde(default)]
+    pub placement_tags: Vec<String>,
 }
 
 impl ToolSpec {
@@ -36,6 +38,7 @@ impl ToolSpec {
             required_capabilities: Vec::new(),
             requires_confirmation: false,
             irreversible: false,
+            placement_tags: Vec::new(),
         }
     }
 
@@ -67,6 +70,15 @@ impl ToolSpec {
 
     pub fn irreversible(mut self) -> Self {
         self.irreversible = true;
+        self
+    }
+
+    pub fn with_placement_tags<I, S>(mut self, tags: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.placement_tags = tags.into_iter().map(Into::into).collect();
         self
     }
 

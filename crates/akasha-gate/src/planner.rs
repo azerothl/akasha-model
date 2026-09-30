@@ -1,6 +1,9 @@
+use crate::authority::{apply_authority_profile, AuthorityProfile};
+use crate::catalog::{check_catalog_policy, CatalogPolicy};
 use crate::types::{PlanStatus, ToolCallPlan, ToolSpec};
 use crate::validate::validate_tool_arguments;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::BTreeMap;
 use thiserror::Error;
 
@@ -32,6 +35,32 @@ pub struct GateSignals {
     pub confirmation_given: bool,
     #[serde(default)]
     pub capability_signals: Option<BTreeMap<String, f64>>,
+    /// Host-owned remaining budget. `Some(v)` with `v <= 0` → `budget_exceeded`.
+    #[serde(default)]
+    pub budget_remaining: Option<f64>,
+    /// Optional consequence signal for authority escalate thresholds.
+    #[serde(default)]
+    pub consequence: Option<f64>,
+    /// Optional context map for authority `required_context_keys`.
+    #[serde(default)]
+    pub context: Option<BTreeMap<String, Value>>,
+}
+
+impl GateSignals {
+    pub fn new(authorized: f64, sufficient_context: f64) -> Self {
+        Self {
+            authorized,
+            sufficient_context,
+            capability_present: None,
+            confirmation_needed: None,
+            risk_score: None,
+            confirmation_given: false,
+            capability_signals: None,
+            budget_remaining: None,
+            consequence: None,
+            context: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -291,15 +320,68 @@ pub fn choice_from_proposal(
     })
 }
 
+/// Optional extras for [`evaluate_gate`].
+#[derive(Debug, Clone, Default)]
+pub struct EvaluateOptions<'a> {
+    pub planner: Option<&'a ToolCallPlanner>,
+    pub catalog_policy: Option<&'a CatalogPolicy>,
+    pub authority_profile: Option<&'a AuthorityProfile>,
+}
+
 pub fn evaluate_gate(
     tools: &BTreeMap<String, ToolSpec>,
     proposal: &ToolProposal,
     signals: &GateSignals,
     planner: Option<&ToolCallPlanner>,
 ) -> Result<ToolCallPlan, GateError> {
+    evaluate_gate_with(
+        tools,
+        proposal,
+        signals,
+        EvaluateOptions {
+            planner,
+            ..EvaluateOptions::default()
+        },
+    )
+}
+
+pub fn evaluate_gate_with(
+    tools: &BTreeMap<String, ToolSpec>,
+    proposal: &ToolProposal,
+    signals: &GateSignals,
+    options: EvaluateOptions<'_>,
+) -> Result<ToolCallPlan, GateError> {
+    if let Some(blocked) =
+        check_catalog_policy(tools, &proposal.tool_name, options.catalog_policy)
+    {
+        return Ok(blocked);
+    }
     let default = default_gate_planner();
-    let active = planner.unwrap_or(&default);
+    let active = options.planner.unwrap_or(&default);
     let choice = choice_from_proposal(tools, proposal, 0.90)?;
+    if let Some(remaining) = signals.budget_remaining {
+        if remaining <= 0.0 {
+            let probability = choice
+                .selected
+                .as_ref()
+                .and_then(|name| choice.probabilities.get(name).copied())
+                .unwrap_or(0.0);
+            let tool_name = if tools.contains_key(&proposal.tool_name) {
+                Some(proposal.tool_name.clone())
+            } else {
+                choice.selected.clone()
+            };
+            return Ok(ToolCallPlan {
+                status: PlanStatus::Blocked,
+                tool_name,
+                arguments: None,
+                reason: "budget_exceeded".into(),
+                choice_probability: probability,
+                choice_confidence: choice.confidence,
+                risk_score: signals.risk_score,
+            });
+        }
+    }
     let mut nouls = BTreeMap::new();
     nouls.insert("authorized".into(), signals.authorized);
     nouls.insert("sufficient_context".into(), signals.sufficient_context);
@@ -314,12 +396,21 @@ pub fn evaluate_gate(
     if let Some(v) = signals.confirmation_needed {
         nouls.insert("confirmation_needed".into(), v);
     }
-    Ok(active.plan(
+    let plan = active.plan(
         &choice,
         tools,
         proposal.arguments.as_ref(),
         &nouls,
         signals.risk_score,
         signals.confirmation_given,
+    );
+    Ok(apply_authority_profile(
+        plan,
+        options.authority_profile,
+        signals.authorized,
+        signals.sufficient_context,
+        signals.risk_score,
+        signals.consequence,
+        signals.context.as_ref(),
     ))
 }

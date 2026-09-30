@@ -5,17 +5,24 @@
 //!
 //! Optional C ABI (`cdylib`): see [`ffi`] and `include/akasha_gate.h`.
 
+<<<<<<< HEAD
 mod ffi;
+=======
+mod authority;
+mod catalog;
+>>>>>>> 71408b3 (Add Rust Path A catalog, authority, and budget parity.)
 mod host;
 mod planner;
 mod types;
 mod validate;
 
+pub use authority::{annotate_reason, apply_authority_profile, AuthorityProfile};
+pub use catalog::{check_catalog_policy, CatalogPolicy};
 pub use host::{dispatch_plan, run_gated_call, HostAction, HostOutcome, ToolHost};
 pub use planner::{
-    default_gate_planner, evaluate_gate, ChoicePeak, GateSignals, ToolCallPlanner, ToolProposal,
-    DEFAULT_MAX_RISK_SCORE, DEFAULT_MIN_CHOICE_CONFIDENCE, DEFAULT_MIN_CHOICE_PROBABILITY,
-    DEFAULT_NOUL_THRESHOLD,
+    choice_from_proposal, default_gate_planner, evaluate_gate, evaluate_gate_with, ChoicePeak,
+    EvaluateOptions, GateSignals, ToolCallPlanner, ToolProposal, DEFAULT_MAX_RISK_SCORE,
+    DEFAULT_MIN_CHOICE_CONFIDENCE, DEFAULT_MIN_CHOICE_PROBABILITY, DEFAULT_NOUL_THRESHOLD,
 };
 pub use types::{PlanStatus, ToolCallPlan, ToolSpec};
 pub use validate::validate_tool_arguments;

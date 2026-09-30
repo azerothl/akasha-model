@@ -38,6 +38,7 @@ may differ slightly; status and block/abstain reasons are authoritative.
 
 ## Status
 
+<<<<<<< HEAD
 Base Path A is in the crate: `evaluate_gate`, multi-cap `required_capabilities`,
 and wire `contract_version`. Shared golden fixtures live under
 `crates/akasha-gate/tests/fixtures/` and `tests/contracts/fixtures/`.
@@ -80,4 +81,22 @@ python3 crates/akasha-gate/scripts/ffi_ctypes_smoke.py
 
 - Extended Path A parity with Python: `CatalogPolicy`, `AuthorityProfile`,
   `budget_remaining` (and optionally audit envelopes) — [#45](https://github.com/azerothl/akasha-model/issues/45)
+=======
+Base Path A plus extended parity with Python:
+
+- `evaluate_gate` / `evaluate_gate_with`
+- multi-cap `required_capabilities`
+- wire `contract_version`
+- `CatalogPolicy` (allow / deny / placement)
+- `AuthorityProfile` (escalate / reject / clarify reason codes)
+- `budget_remaining` on `GateSignals` (`budget_exceeded` when ≤ 0)
+
+Shared golden fixtures live under `crates/akasha-gate/tests/` and
+`tests/contracts/fixtures/`. Audit envelopes remain optional / host-side.
+
+## Follow-ups (optional)
+
+- Optional FFI `cdylib` for non-Rust hosts — [#49](https://github.com/azerothl/akasha-model/issues/49)
+- Audit envelope fields on the Rust wire (optional; Python has them)
+>>>>>>> 71408b3 (Add Rust Path A catalog, authority, and budget parity.)
 - Publish `akasha-gate` on crates.io (git dep is enough today)
