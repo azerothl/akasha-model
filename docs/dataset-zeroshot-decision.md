@@ -1,12 +1,14 @@
 # Dataset spec: zero-shot conditional decisions
 
-**Status:** optional Path B probe (implemented smoke CLI) · **Date:** 2026-09-27  
+**Status:** optional Path B probe (smoke CLI + full-scale generate/audit verified) · **Date:** 2026-09-30  
 **Repo:** `azerothl/akasha-model`  
 **Related:** ADR 0010 (akasha-os decision layer), MASK+RLCD path, `ToolCallPlanner`
 
 > Product direction (2026-09-25): akasha-model is an **authorization gate**, not a
 > generalist System 1. This dataset is an **optional Path B quality probe**
-> (novel option descriptions). It is **not** a cutover gate or Jev parity proof.
+> (novel option descriptions). It is **not** a cutover gate, release blocker, or
+> Jev parity proof. Full-scale probe note:
+> [zeroshot-fullscale-probe.md](zeroshot-fullscale-probe.md).
 
 ## 1. Goal
 
@@ -268,10 +270,17 @@ ablation hooks sample ids, and a machine-readable `gates.json` template.
 Full-scale runs and cutover-style reports are **not** a release blocker; see
 the status banner at the top of this doc.
 
-## 10. Acceptance for ADR 0010 Phase C
+A checked-in summary of one full-scale generate+audit pass (no dataset bytes):
+[docs/zeroshot-fullscale-probe.md](zeroshot-fullscale-probe.md).
 
-Shadow (Phase A) may use Akasha-OS multitask alone. **Gated cutover (Phase C)**
-additionally requires:
+## 10. Acceptance for ADR 0010 Phase C (deferred / optional)
+
+**This section is historical ADR prose, not a release gate for akasha-model.**
+Product identity is Path A authorization; zeroshot is an optional Path B
+probe. Phase C cutover metrics are **not required** to ship the package.
+
+Shadow (Phase A) may use Akasha-OS multitask alone. A **hypothetical** gated
+cutover (Phase C) would additionally want:
 
 1. This dataset generated + audited with zero critical leakage findings.
 2. Unseen-domain and unseen-label Choice accuracy reported side-by-side with
@@ -280,7 +289,9 @@ additionally requires:
 4. ECE (or reliability diagram) after calibration attached to the cutover note.
 
 Until then, treat strong in-domain Akasha numbers as **product fit**, not proof
-of general System One competence.
+of general System One competence. Full-scale leakage audit alone (see
+[zeroshot-fullscale-probe.md](zeroshot-fullscale-probe.md)) does **not** claim
+cutover readiness.
 
 ## 11. References
 
