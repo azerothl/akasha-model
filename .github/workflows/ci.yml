@@ -89,6 +89,11 @@ jobs:
       - name: cargo test akasha-gate
         run: cargo test -p akasha-gate
 
+      - name: FFI cdylib ctypes smoke
+        run: |
+          cargo build -p akasha-gate
+          python3 crates/akasha-gate/scripts/ffi_ctypes_smoke.py
+
   games:
     name: games-smoke
     runs-on: ubuntu-latest

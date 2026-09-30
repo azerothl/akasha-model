@@ -6,6 +6,16 @@ license.workspace = true
 repository.workspace = true
 description = "Path A tool-gate planner for Akasha OS (no tool execution, no torch)."
 readme = "README.md"
+include = [
+  "src/**/*",
+  "tests/**/*",
+  "include/**/*",
+  "README.md",
+]
+
+[lib]
+name = "akasha_gate"
+crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
