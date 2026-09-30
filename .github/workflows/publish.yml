@@ -4,6 +4,13 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+  # Cursor/GitHub App tokens cannot workflow_dispatch (403) and release
+  # events they create do not chain into new workflow runs. repository_dispatch
+  # is allowed and is the agent-reachable trigger for the first PyPI upload.
+  repository_dispatch:
+    types: [publish-pypi]
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: read
