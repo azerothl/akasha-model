@@ -538,7 +538,8 @@ outcomes JSONL; `suggest_threshold_updates` still never auto-writes `DEFAULT_*`.
   goal: **tool authorization gate**)
 - The committed `gate-tiny.pt` is a **small demo** scorer on synthetic data —
   train on your traffic before production (see the **Production Path B
-  checklist** in [examples/gate/README.md](../examples/gate/README.md))
+  checklist** in [examples/gate/README.md](../examples/gate/README.md) and
+  [path-b-real-traffic.md](path-b-real-traffic.md))
 - Optional Path B description-reading probe (not a gate cutover): see
   [dataset-zeroshot-decision.md](dataset-zeroshot-decision.md) and
   `scripts/generate_zeroshot_decision_dataset.py` (data under `data/`, gitignored)
@@ -550,6 +551,7 @@ outcomes JSONL; `suggest_threshold_updates` still never auto-writes `DEFAULT_*`.
 | Need | Location |
 |------|----------|
 | Run demos / thresholds / go-no-go | [examples/gate/README.md](../examples/gate/README.md) |
+| Path B on host traffic (beyond gate-tiny) | [path-b-real-traffic.md](path-b-real-traffic.md) |
 | Other concrete menus (triage, OS routing, checklist, ensemble, vision) | [use-cases.md](use-cases.md) |
 | Package API | `akasha_model.gate`, `gate_multitask`, `host`, `tool_calling`, `wire` |
 | Wire schemas / Rust bridge | [contracts/README.md](contracts/README.md) · `akasha_model/schemas/` |
