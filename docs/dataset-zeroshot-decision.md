@@ -233,7 +233,23 @@ demo/probe, not the statistical gate.
 Undefined jargon **without** definitions is allowed only in stress rows whose
 expected behavior is abstain / low confidence / `policy_sufficient=false`.
 
-## 9. Generator CLI (to implement)
+## 9. Generator CLI (smoke landed; full-scale optional)
+
+Smoke-scale generator and audit CLIs ship with the package (#17). CI runs a
+tiny row count; do not commit generated datasets (`data/` is gitignored).
+
+**Smoke (default small counts — matches CI):**
+
+```text
+python scripts/generate_zeroshot_decision_dataset.py \
+  --output data/zeroshot_decision_smoke \
+  --seed 20260922
+
+python scripts/audit_zeroshot_decision_dataset.py \
+  --input data/zeroshot_decision_smoke
+```
+
+**Full-scale targets (optional Path B probe — [#46](https://github.com/azerothl/akasha-model/issues/46)):**
 
 ```text
 python scripts/generate_zeroshot_decision_dataset.py \
@@ -247,6 +263,8 @@ python scripts/audit_zeroshot_decision_dataset.py \
 
 Audit must emit: collision counts, domain holdout proof, arbitrary-label share,
 ablation hooks sample ids, and a machine-readable `gates.json` template.
+Full-scale runs and cutover-style reports are **not** a release blocker; see
+the status banner at the top of this doc.
 
 ## 10. Acceptance for ADR 0010 Phase C
 

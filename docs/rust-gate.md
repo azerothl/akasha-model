@@ -15,7 +15,7 @@ need torch — a natural native port.
 | Path A `evaluate_gate` / `dispatch_plan` / `ToolSpec` | Rust crate `akasha-gate` **and** Python `akasha_model` (parity) |
 | Path B scored proposals / MASK / RLCD | Python only (`akasha_model[torch]`) |
 | OS permissions / ACLs / execution | Akasha OS host (`ToolHost` / `AkashaOsToolHost`) |
-| Wire JSON | `akasha_model/schemas/` + `CONTRACT_VERSION` (see #12) |
+| Wire JSON | `akasha_model/schemas/` + `CONTRACT_VERSION` (`docs/contracts/`) |
 
 **Non-negotiable:** no tool executor inside this crate. `dispatch_plan` calls a
 host-supplied `ToolHost` trait only after `ready` + `check_permissions`.
@@ -36,7 +36,16 @@ shared golden fixtures (`crates/akasha-gate/tests/fixtures/` and
 `tests/contracts/fixtures/` when present). Exact floating confidence strings
 may differ slightly; status and block/abstain reasons are authoritative.
 
-## Follow-ups
+## Status
 
-- Multi-cap `required_capabilities` + wire `contract_version` once #12/#14 land
-- Optional FFI `cdylib` if a non-Rust host needs a `.so` without embedding CPython
+Base Path A is in the crate: `evaluate_gate`, multi-cap `required_capabilities`,
+and wire `contract_version`. Shared golden fixtures live under
+`crates/akasha-gate/tests/fixtures/`.
+
+## Follow-ups (optional)
+
+- Extended Path A parity with Python: `CatalogPolicy`, `AuthorityProfile`,
+  `budget_remaining` (and optionally audit envelopes) — [#45](https://github.com/azerothl/akasha-model/issues/45)
+- Optional FFI `cdylib` for non-Rust hosts that cannot embed the crate —
+  [#49](https://github.com/azerothl/akasha-model/issues/49)
+- Publish `akasha-gate` on crates.io (git dep is enough today)
