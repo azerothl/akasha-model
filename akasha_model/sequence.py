@@ -1,16 +1,28 @@
 """MASK-marker sequences for one-pass typed decisions.
 
-Format: ``[CLS] <type> question: <instructions> [SEP] [MASK] opt0 [MASK] opt1
-... [SEP] <state> [SEP]``. Each option is scored at its ``[MASK]`` position.
+Two layouts (same options / markers either way):
+
+* ``schema_first`` (default): ``[CLS] <type> question: <instructions> [SEP]
+  [MASK] opt0 [MASK] opt1 ... [SEP] <state> [SEP]``. Fixed authorize schemas
+  share a long token prefix across changing states (KV / prefix cache friendly).
+* ``state_first``: ``[CLS] <state> [SEP] <type> question: <instructions> [SEP]
+  [MASK] opt0 ... [SEP]``. Useful as a train-time mixmate so one checkpoint
+  stays robust if a host still emits state-first rows.
+
+Each option is scored at its ``[MASK]`` position.
 """
 
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Literal
 
 QTYPES = {"choice": 0, "score": 1, "noul": 2}
 QTYPE_NAMES = {v: k for k, v in QTYPES.items()}
+
+LayoutName = Literal["schema_first", "state_first"]
+LAYOUTS: tuple[str, ...] = ("schema_first", "state_first")
+DEFAULT_LAYOUT: LayoutName = "schema_first"
 
 
 def serialize_state(state: str | dict[str, Any] | list[Any]) -> str:
@@ -102,20 +114,16 @@ def option_target(question: dict[str, Any], order: list[int] | None = None) -> l
     return [target[index] for index in order]
 
 
-def build_sequence(
+def _schema_pieces(
     tokenizer,
-    state: str | dict[str, Any] | list[Any],
     question: dict[str, Any],
-    max_len: int = 768,
-    head_max_len: int = 384,
-    option_order: list[int] | None = None,
-    option_max_len: int = 48,
-    truncate_left: bool = False,
-) -> tuple[list[int], list[int]]:
-    """Tokenise one typed question. Returns ``(input_ids, mask_marker_positions)``."""
+    order: list[int],
+    head_max_len: int,
+    option_max_len: int,
+) -> tuple[list[int], list[list[int]]]:
+    """Tokenise question head and per-option segments (each starts with [MASK])."""
     mask_token = tokenizer.mask_token
     options = render_options(question)
-    order = option_order if option_order is not None else list(range(len(options)))
     instructions = str(question["ins"]).replace(mask_token, " ")
     head_ids = tokenizer(
         f"{question['t']} question: {instructions}", add_special_tokens=False,
@@ -133,16 +141,59 @@ def build_sequence(
         option_ids = [item[:per_option] for item in option_ids]
         option_budget = head_max_len - sum(len(item) for item in option_ids)
     head_ids = head_ids[: max(8, option_budget)]
-    ids = [tokenizer.cls_token_id] + head_ids + [tokenizer.sep_token_id]
-    markers = []
-    for option in option_ids:
-        markers.append(len(ids))
-        ids.extend(option)
-    ids.append(tokenizer.sep_token_id)
-    room = max(0, max_len - len(ids) - 1)
+    return head_ids, option_ids
+
+
+def build_sequence(
+    tokenizer,
+    state: str | dict[str, Any] | list[Any],
+    question: dict[str, Any],
+    max_len: int = 768,
+    head_max_len: int = 384,
+    option_order: list[int] | None = None,
+    option_max_len: int = 48,
+    truncate_left: bool = False,
+    layout: str = DEFAULT_LAYOUT,
+) -> tuple[list[int], list[int]]:
+    """Tokenise one typed question. Returns ``(input_ids, mask_marker_positions)``."""
+    if layout not in LAYOUTS:
+        raise ValueError(f"layout must be one of {LAYOUTS}, got {layout!r}")
+    options = render_options(question)
+    order = option_order if option_order is not None else list(range(len(options)))
+    head_ids, option_ids = _schema_pieces(
+        tokenizer, question, order, head_max_len, option_max_len,
+    )
+    mask_token = tokenizer.mask_token
     state_ids = tokenizer(
         serialize_state(state).replace(mask_token, " "), add_special_tokens=False,
     )["input_ids"]
-    state_ids = state_ids[-room:] if truncate_left else state_ids[:room]
-    ids = ids + state_ids + [tokenizer.sep_token_id]
+
+    if layout == "schema_first":
+        ids = [tokenizer.cls_token_id] + head_ids + [tokenizer.sep_token_id]
+        markers = []
+        for option in option_ids:
+            markers.append(len(ids))
+            ids.extend(option)
+        ids.append(tokenizer.sep_token_id)
+        room = max(0, max_len - len(ids) - 1)
+        clipped = state_ids[-room:] if truncate_left else state_ids[:room]
+        ids = ids + clipped + [tokenizer.sep_token_id]
+    else:
+        # state_first: reserve room for schema + two SEPs after CLS/state.
+        schema_len = (
+            len(head_ids) + 1
+            + sum(len(item) for item in option_ids)
+            + 1
+        )
+        room = max(0, max_len - 1 - schema_len - 1)
+        clipped = state_ids[-room:] if truncate_left else state_ids[:room]
+        ids = [tokenizer.cls_token_id] + clipped + [tokenizer.sep_token_id]
+        ids.extend(head_ids)
+        ids.append(tokenizer.sep_token_id)
+        markers = []
+        for option in option_ids:
+            markers.append(len(ids))
+            ids.extend(option)
+        ids.append(tokenizer.sep_token_id)
+
     return ids[:max_len], [marker for marker in markers if marker < max_len]

@@ -151,6 +151,12 @@ MASK+BERT / `akasha-rlcd-train` is optional when the tiny byte path fails your
 go/no-go matrix after calibration — not the default recipe. Stronger backbones
 are tracked only if this recipe fails (#26).
 
+For MASK authorize rows, prefer **schema-first** layout (question + options
+before state) so a fixed catalog schema shares a token prefix across states.
+Train with `--mask-layout mix` if you need one checkpoint that also handles
+state-first rows; see [docs/using-the-tool-gate.md](../../docs/using-the-tool-gate.md)
+(MASK layout).
+
 ### 4. Gate go/no-go on a held-out split
 
 Re-run the false-positive / false-negative matrix from the Defaults section

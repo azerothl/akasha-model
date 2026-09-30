@@ -9,7 +9,14 @@ from typing import Any
 import torch
 from torch import nn
 
-from .sequence import QTYPES, build_sequence, mask_question_from_row, option_target
+from .sequence import (
+    DEFAULT_LAYOUT,
+    LAYOUTS,
+    QTYPES,
+    build_sequence,
+    mask_question_from_row,
+    option_target,
+)
 
 
 class ByteTokenizer:
@@ -139,9 +146,17 @@ class MaskCollator:
         self, tokenizer, max_len: int = 768, head_max_len: int = 384,
         option_max_len: int = 48, group_size: int = 1, seed: int = 0,
         target_mode: str = "provided",
+        layout: str = DEFAULT_LAYOUT,
+        layout_mix: float = 0.0,
     ) -> None:
         if target_mode not in {"provided", "one_hot"}:
             raise ValueError("target_mode must be provided or one_hot")
+        if layout not in LAYOUTS and layout != "mix":
+            raise ValueError(
+                f"layout must be one of {LAYOUTS + ('mix',)}, got {layout!r}"
+            )
+        if not 0.0 <= layout_mix <= 1.0:
+            raise ValueError("layout_mix must be in [0, 1]")
         self.tokenizer = tokenizer
         self.max_len = max_len
         self.head_max_len = head_max_len
@@ -149,14 +164,30 @@ class MaskCollator:
         self.group_size = max(1, group_size)
         self.seed = seed
         self.target_mode = target_mode
+        self.layout = layout
+        # Probability of drawing state_first when layout == "mix".
+        self.layout_mix = float(layout_mix) if layout == "mix" else 0.0
+
+    def _pick_layout(self, example_index: int, question_index: int) -> str:
+        if self.layout != "mix":
+            return self.layout
+        generator = torch.Generator().manual_seed(
+            self.seed + 7919 * example_index + 104729 * question_index,
+        )
+        draw = float(torch.rand((), generator=generator))
+        return "state_first" if draw < self.layout_mix else "schema_first"
 
     def encode_question(
         self, state: Any, payload: dict[str, Any], option_order: list[int] | None = None,
+        layout: str | None = None,
     ) -> dict[str, Any]:
         question = mask_question_from_row(payload)
+        chosen = layout if layout is not None else (
+            self.layout if self.layout != "mix" else DEFAULT_LAYOUT
+        )
         ids, markers = build_sequence(
             self.tokenizer, state, question, self.max_len, self.head_max_len,
-            option_order, self.option_max_len,
+            option_order, self.option_max_len, layout=chosen,
         )
         if self.target_mode == "one_hot":
             question = {**question, "target": None}
@@ -175,6 +206,7 @@ class MaskCollator:
             "target": options,
             "qtype": QTYPES[question["t"]],
             "label": label,
+            "layout": chosen,
         }
 
     def _orders(self, count: int, example_index: int) -> list[list[int]]:
@@ -192,11 +224,16 @@ class MaskCollator:
         grouped: list[list[dict[str, Any]]] = []
         for example_index, example in enumerate(examples):
             group: list[dict[str, Any]] = []
-            for question in example.questions:
+            for question_index, question in enumerate(example.questions):
                 spec = mask_question_from_row(question)
                 count = len(option_target(spec))
+                chosen = self._pick_layout(example_index, question_index)
                 for order in self._orders(count, example_index):
-                    group.append(self.encode_question(example.context, question, order))
+                    group.append(
+                        self.encode_question(
+                            example.context, question, order, layout=chosen,
+                        )
+                    )
             grouped.append(group)
         batch = collate_items(grouped, self.tokenizer.pad_token_id)
         if batch is None:
