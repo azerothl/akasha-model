@@ -55,6 +55,12 @@ struct FfiSignals {
     risk: Option<FfiRisk>,
     #[serde(default)]
     risk_score: Option<f64>,
+    #[serde(default)]
+    budget_remaining: Option<f64>,
+    #[serde(default)]
+    consequence: Option<f64>,
+    #[serde(default)]
+    context: Option<BTreeMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -73,6 +79,9 @@ impl FfiSignals {
             risk_score,
             confirmation_given: self.confirmation_given,
             capability_signals: self.capability_signals,
+            budget_remaining: self.budget_remaining,
+            consequence: self.consequence,
+            context: self.context,
         }
     }
 }

@@ -83,6 +83,9 @@ fn ready_read_matches_python_status_class() {
         risk_score: None,
         confirmation_given: false,
         capability_signals: None,
+        budget_remaining: None,
+        consequence: None,
+        context: None,
     };
     let plan = evaluate_gate(&tools, &proposal, &signals, None).unwrap();
     assert_eq!(plan.status, PlanStatus::Ready);
@@ -108,6 +111,9 @@ fn delete_without_confirmation_blocked() {
         risk_score: None,
         confirmation_given: false,
         capability_signals: None,
+        budget_remaining: None,
+        consequence: None,
+        context: None,
     };
     let plan = evaluate_gate(&tools, &proposal, &signals, None).unwrap();
     assert_eq!(plan.status, PlanStatus::Blocked);
@@ -134,6 +140,9 @@ fn weak_choice_abstains() {
         risk_score: None,
         confirmation_given: false,
         capability_signals: None,
+        budget_remaining: None,
+        consequence: None,
+        context: None,
     };
     let planner = ToolCallPlanner {
         min_choice_probability: 0.60,
@@ -165,6 +174,9 @@ fn host_permission_denial() {
         risk_score: None,
         confirmation_given: false,
         capability_signals: None,
+        budget_remaining: None,
+        consequence: None,
+        context: None,
     };
     let plan = evaluate_gate(&tools, &proposal, &signals, None).unwrap();
     let outcome = dispatch_plan(&plan, &DenyHost);
@@ -204,6 +216,9 @@ fn multi_cap_partial_block() {
         risk_score: None,
         confirmation_given: true,
         capability_signals: Some(caps),
+        budget_remaining: None,
+        consequence: None,
+        context: None,
     };
     let plan = evaluate_gate(&tools, &proposal, &signals, None).unwrap();
     assert_eq!(plan.status, PlanStatus::Blocked);
