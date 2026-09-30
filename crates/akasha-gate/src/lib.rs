@@ -2,7 +2,10 @@
 //!
 //! Mirrors `akasha_model.tool_calling` / `gate` / `host` for scripted
 //! authorization. Path B scorers stay in the Python package.
+//!
+//! Optional C ABI (`cdylib`): see [`ffi`] and `include/akasha_gate.h`.
 
+mod ffi;
 mod host;
 mod planner;
 mod types;

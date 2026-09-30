@@ -31,4 +31,15 @@ classes. Run:
 cargo test -p akasha-gate
 ```
 
-Design note: [docs/rust-gate.md](../../docs/rust-gate.md).
+## C ABI (`cdylib`)
+
+Non-Rust hosts can `dlopen` the shared library (header
+[`include/akasha_gate.h`](include/akasha_gate.h)):
+
+```sh
+cargo build -p akasha-gate --release
+python3 crates/akasha-gate/scripts/ffi_ctypes_smoke.py
+```
+
+`akasha_gate_evaluate_json` authorizes only — no tool executor inside the
+library. Details: [docs/rust-gate.md](../../docs/rust-gate.md).
