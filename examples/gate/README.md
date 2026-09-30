@@ -120,11 +120,24 @@ authorize-tool-call traffic. Install Path A with `uv pip install -e '.[dev]'`
 (no torch). Path B scored demos and training need
 `uv pip install -e '.[dev,torch]'` (or `pip install 'akasha-model[torch]'`).
 
+Host-side real traffic (export schema, import hook, demo vs prod checkpoint
+policy): [docs/path-b-real-traffic.md](../../docs/path-b-real-traffic.md).
+
 ### 1. Collect labeled authorize rows
 
 JSONL multitask rows (Choice / Score / Noul) for situations your host sees.
 Keep production data under `data/` (gitignored). Do **not** mix Hub
 typed-decisions leaderboard rows into the authorize train set.
+
+From a scrubbed host export (public schema — see the Path B traffic doc):
+
+```sh
+PYTHONPATH=examples/gate python examples/gate/import_authorize_export.py \
+  --input examples/gate/fixtures/host_authorize_export.jsonl \
+  --output data/gate/from_host
+```
+
+Replace the fixture path with your host export under `data/` (never commit it).
 
 ### 2. Anti-leakage split
 
