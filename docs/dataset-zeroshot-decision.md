@@ -235,15 +235,17 @@ expected behavior is abstain / low confidence / `policy_sufficient=false`.
 
 ## 9. Generator CLI (smoke landed; full-scale optional)
 
-Smoke-scale generator and audit CLIs ship with the package (#17). CI runs a
-tiny row count; do not commit generated datasets (`data/` is gitignored).
+Generator and audit CLIs ship with the package (#17). CLI defaults match the
+full-scale row targets below; CI uses tiny overrides. Do not commit generated
+datasets (`data/` is gitignored).
 
-**Smoke (default small counts — matches CI):**
+**Smoke (CI-scale overrides):**
 
 ```text
 python scripts/generate_zeroshot_decision_dataset.py \
   --output data/zeroshot_decision_smoke \
-  --seed 20260922
+  --seed 20260922 \
+  --train 40 --val 10 --test-domain 10 --test-labels 10 --stress 10
 
 python scripts/audit_zeroshot_decision_dataset.py \
   --input data/zeroshot_decision_smoke
