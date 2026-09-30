@@ -5,12 +5,9 @@
 //!
 //! Optional C ABI (`cdylib`): see [`ffi`] and `include/akasha_gate.h`.
 
-<<<<<<< HEAD
-mod ffi;
-=======
 mod authority;
 mod catalog;
->>>>>>> 71408b3 (Add Rust Path A catalog, authority, and budget parity.)
+mod ffi;
 mod host;
 mod planner;
 mod types;
