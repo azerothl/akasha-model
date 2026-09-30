@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 First tagged release for Akasha OS and other Path A / Path C hosts.
 
-Pin with a git tag (preferred over feature branches):
+Install from PyPI or pin a git tag (preferred over feature branches):
 
 ```text
+pip install akasha-model==0.2.0
+# or
 akasha-model @ git+https://github.com/azerothl/akasha-model.git@v0.2.0
 ```
 
