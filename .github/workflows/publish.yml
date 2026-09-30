@@ -19,6 +19,9 @@ jobs:
   publish:
     name: publish to PyPI
     runs-on: ubuntu-latest
+    # Match a pending publisher that set Environment name to "pypi"
+    # (common PyPI docs default). First job run creates the env if missing.
+    environment: pypi
     permissions:
       contents: read
       id-token: write
