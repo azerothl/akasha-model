@@ -153,12 +153,25 @@ def main() -> None:
         "--type-balance", action="store_true",
         help="average Choice/Score/Noul losses equally instead of by question count",
     )
+    parser.add_argument(
+        "--mask-layout",
+        choices=("schema_first", "state_first", "mix"),
+        default="schema_first",
+        help="MASK token order: schema-first (default, KV-prefix friendly), "
+             "state-first, or mix both during train",
+    )
+    parser.add_argument(
+        "--layout-mix", type=float, default=0.5,
+        help="when --mask-layout=mix, probability of state_first (rest schema_first)",
+    )
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--device", choices=("auto", "cpu", "mps", "cuda"), default="auto")
     parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args()
     if args.group_size < 1:
         parser.error("--group-size must be at least 1")
+    if not 0.0 <= args.layout_mix <= 1.0:
+        parser.error("--layout-mix must be in [0, 1]")
     torch.manual_seed(args.seed)
     device = select_device(args.device)
     config = {
@@ -175,19 +188,26 @@ def main() -> None:
         "dropout": args.dropout,
         "policy_weight": args.policy_weight,
         "type_balance": args.type_balance,
+        "mask_layout": args.mask_layout,
+        "layout_mix": args.layout_mix if args.mask_layout == "mix" else 0.0,
         "temperature": [1.0, 1.0, 1.0],
     }
     if args.init:
         model, tokenizer, config = load_decision_checkpoint(args.init, device)
         config = dict(config)
-        config.update(policy_weight=args.policy_weight, type_balance=args.type_balance,
-                      target_mode=args.target_mode)
+        config.update(
+            policy_weight=args.policy_weight, type_balance=args.type_balance,
+            target_mode=args.target_mode, mask_layout=args.mask_layout,
+            layout_mix=args.layout_mix if args.mask_layout == "mix" else 0.0,
+        )
     else:
         model, tokenizer = make_decision_model(config, device)
         config["target_mode"] = args.target_mode
     collator = MaskCollator(
         tokenizer, args.max_len, args.head_max_len, args.option_max_len,
         args.group_size, args.seed, args.target_mode,
+        layout=args.mask_layout,
+        layout_mix=args.layout_mix if args.mask_layout == "mix" else 0.0,
     )
     train_loader = DataLoader(
         MultiQuestionDataset(args.train), batch_size=args.batch_size,
@@ -197,7 +217,7 @@ def main() -> None:
         MultiQuestionDataset(args.validation), batch_size=args.batch_size,
         collate_fn=MaskCollator(
             tokenizer, args.max_len, args.head_max_len, args.option_max_len,
-            1, args.seed, args.target_mode,
+            1, args.seed, args.target_mode, layout="schema_first",
         ),
     )
     optimiser = _build_optimiser(model, args)

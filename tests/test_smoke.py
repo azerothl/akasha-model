@@ -6,7 +6,9 @@ from akasha_model.model import TinyScorer
 from akasha_model.calibration import fit_temperature
 from akasha_model.train import brier_loss, training_loss
 from akasha_model.data import validate
-from akasha_model.decision import ByteTokenizer, DecisionModel, MaskCollator, TinyEncoder
+from akasha_model.decision import (
+    ByteTokenizer, DecisionModel, MaskCollator, TinyEncoder, collate_items,
+)
 from akasha_model.primitives import (
     ChoiceQuestion, NoulQuestion, OptionSpec, ScoreLevel, ScoreQuestion,
     choice_result, noul_result, score_result,
@@ -17,7 +19,7 @@ from akasha_model.multitask import (
 from akasha_model.multitask_eval import _binary_auc, _ece
 from akasha_model.rewards import proper_reward
 from akasha_model.rlcd import grpo_loss
-from akasha_model.sequence import QTYPES, build_sequence
+from akasha_model.sequence import QTYPES, build_sequence, LAYOUTS, DEFAULT_LAYOUT
 from akasha_model.tool_calling import ToolCallPlanner, ToolSpec
 from akasha_model.gate import (
     DEFAULT_MAX_RISK_SCORE,
@@ -469,6 +471,100 @@ def test_mask_sequence_places_a_marker_per_option():
     )
     assert len(markers) == 2
     assert all(ids[position] == tokenizer.mask_token_id for position in markers)
+
+
+def test_mask_layouts_share_option_markers_and_schema_prefix():
+    tokenizer = ByteTokenizer()
+    question = {
+        "t": "choice", "ins": "Authorize the proposed tool call.",
+        "crit": {"deny": "Block.", "allow": "Permit."},
+    }
+    state_a = {"proposal": "fs.read", "situation": "open notes"}
+    state_b = {"proposal": "fs.delete", "situation": "remove notes"}
+    schema_a, markers_a = build_sequence(
+        tokenizer, state_a, question, max_len=256, head_max_len=96,
+        option_max_len=24, layout="schema_first",
+    )
+    schema_b, markers_b = build_sequence(
+        tokenizer, state_b, question, max_len=256, head_max_len=96,
+        option_max_len=24, layout="schema_first",
+    )
+    state_first, markers_sf = build_sequence(
+        tokenizer, state_a, question, max_len=256, head_max_len=96,
+        option_max_len=24, layout="state_first",
+    )
+    assert LAYOUTS == ("schema_first", "state_first")
+    assert DEFAULT_LAYOUT == "schema_first"
+    assert len(markers_a) == len(markers_b) == len(markers_sf) == 2
+    # Shared authorize schema: identical prefix through the options block + SEP.
+    prefix_end = markers_a[-1] + 1
+    while prefix_end < len(schema_a) and schema_a[prefix_end] != tokenizer.sep_token_id:
+        prefix_end += 1
+    prefix_end += 1  # include the SEP after options
+    assert schema_a[:prefix_end] == schema_b[:prefix_end]
+    assert schema_a[:prefix_end] != state_first[:prefix_end]
+    # State tokens sit after the schema in schema_first, before markers in state_first.
+    assert markers_a[0] < prefix_end <= len(schema_a)
+    assert markers_sf[0] > 1
+    assert state_first[1] != tokenizer.mask_token_id
+
+
+def test_mask_layout_mix_keeps_labels_within_tolerance():
+    """Train briefly with mixed layouts; argmax labels agree on both layouts."""
+    example = validate_multi({
+        "context": "Permit the operation on this protected device.",
+        "questions": [
+            {"id": "route", "type": "choice", "instructions": "Choose the route.",
+             "options": [{"name": "deny", "description": "Block the operation."},
+                         {"name": "allow", "description": "Permit the operation."}],
+             "label": 1},
+            {"id": "authorized", "type": "noul",
+             "instructions": "Is the operation authorized?", "label": 1},
+        ],
+    })
+    model = DecisionModel(
+        TinyEncoder(hidden_size=32, layers=1, heads=4, max_len=128, dropout=0.0),
+        head_layers=1, dropout=0.0,
+    )
+    train_batch = MaskCollator(
+        ByteTokenizer(), 128, 64, 16, group_size=1, seed=3,
+        layout="mix", layout_mix=0.5,
+    )([example, example, example, example])
+    optimiser = torch.optim.Adam(model.parameters(), lr=0.03)
+    for _ in range(40):
+        loss = grpo_loss(
+            model(
+                train_batch["input_ids"], train_batch["attention_mask"],
+                train_batch["marker_pos"], train_batch["marker_mask"],
+                train_batch["qtype"],
+            ),
+            train_batch, 0.5, 1.0, 1.0,
+        )["total"]
+        optimiser.zero_grad(set_to_none=True)
+        loss.backward()
+        optimiser.step()
+
+    collator = MaskCollator(ByteTokenizer(), 128, 64, 16, group_size=1)
+    agree = 0
+    total = 0
+    model.eval()
+    with torch.no_grad():
+        for question in example.questions:
+            for layout in LAYOUTS:
+                item = collator.encode_question(
+                    example.context, question, layout=layout,
+                )
+                packed = collate_items([[item]], ByteTokenizer.pad_token_id)
+                logits = model(
+                    packed["input_ids"], packed["attention_mask"],
+                    packed["marker_pos"], packed["marker_mask"], packed["qtype"],
+                )
+                pred = int(logits[0, :len(item["markers"])].argmax().item())
+                total += 1
+                if pred == item["label"]:
+                    agree += 1
+    # Within tolerance on this tiny fixed set after mixed-layout training.
+    assert agree / total >= 0.75
 
 
 def test_proper_reward_prefers_the_true_distribution():

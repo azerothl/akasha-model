@@ -303,6 +303,29 @@ Each JSONL row is a multitask object: `context` + `questions` (`choice`,
 `score`, `noul`). Keep related contexts in one split (anti-leakage). The root
 README describes the multitask format in full.
 
+### MASK layout (schema-first vs state-first)
+
+Path B MASK rows default to **schema-first**: question + options, then the
+changing state. That lets serving amortize a shared prefix when the authorize
+schema is fixed and only the proposal/context changes (KV / prefix cache).
+
+| Layout | Flag | When |
+|--------|------|------|
+| `schema_first` (default) | `--mask-layout schema_first` | Hosts with a fixed Choice/Score/Noul authorize schema |
+| `state_first` | `--mask-layout state_first` | Compatibility / ablation |
+| Mix at train | `--mask-layout mix --layout-mix 0.5` | One checkpoint that serves both |
+
+API: `build_sequence(..., layout=...)` and `MaskCollator(..., layout=..., layout_mix=...)`.
+Eval / serving should stay on `schema_first` unless you intentionally trained
+state-first only.
+
+Latency note (CPU tiny encoder, 2026-09): tokenising two states that share the
+same authorize schema yields an identical prefix through the option markers
+under `schema_first` (measured in unit tests). Wall-clock win on the byte
+encoder is modest; the win is for larger bidirectional encoders where the
+shared prefix can stay in cache across many proposals. Prefer schema-first for
+production Path B authorize traffic.
+
 ---
 
 ## Reading the plan
