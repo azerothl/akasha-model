@@ -7,7 +7,7 @@ remains `ToolCallPlanner` via `evaluate_gate`.
 **Start here for end-to-end usage:** [docs/using-the-tool-gate.md](../../docs/using-the-tool-gate.md)
 (install, Path A scripted signals, Path B scored checkpoint, host loop).
 
-**First-run walkthrough (Path A, ~30s):** [examples/usage/demo.py](../usage/demo.py)
+**First-run walkthrough (Path A, ~30s):** [examples/usage/visual_demo.py](../usage/visual_demo.py) (browser bars) · text: [demo.py](../usage/demo.py)
 — ready / blocked / abstain + ticket-router Choice abstain (no torch).
 
 **Other menus (not tool calls):** [docs/use-cases.md](../../docs/use-cases.md) —
