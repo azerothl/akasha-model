@@ -37,6 +37,7 @@ jobs:
 
       - name: Gate / host / outcomes demos (no torch)
         run: |
+          .venv/bin/python examples/usage/demo.py
           .venv/bin/python examples/gate/demo.py
           .venv/bin/python examples/gate/host_demo.py
           .venv/bin/python examples/gate/outcomes_demo.py --log data/gate/outcomes-ci.jsonl
@@ -65,6 +66,9 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           .venv/bin/pytest -q
+
+      - name: First-run usage demo (Path A)
+        run: .venv/bin/python examples/usage/demo.py
 
       - name: Gate demo (no side effects)
         run: .venv/bin/python examples/gate/demo.py
