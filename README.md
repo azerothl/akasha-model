@@ -12,7 +12,19 @@ The public comparison for this shape of model is TypeSafe [Jev](https://typesafe
 
 **Concrete use cases beyond the gate** (support triage, OS action menus, multi-signal checklists, ensemble abstention, Wikispeedia, vision lab): [docs/use-cases.md](https://github.com/azerothl/akasha-model/blob/main/docs/use-cases.md).
 
-## Demo
+## Try it (Path A, ~30 seconds)
+
+No torch, no Hub download, no side effects. From a repository checkout:
+
+```sh
+uv venv && source .venv/bin/activate
+uv pip install -e '.[dev]'
+python examples/usage/demo.py
+```
+
+You should see a **ready** safe read, a **blocked** delete without confirmation, an **abstain** on an ambiguous mail proposal, then a ticket-router Choice menu with abstain-on-low-confidence. Details: [examples/usage](examples/usage/README.md). Deeper gate / host / Path B: [examples/gate](examples/gate/README.md) and [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md).
+
+## Vision film demo
 
 The same option-attention head can score controller buttons from image patches. [This ten-second film](https://github.com/azerothl/akasha-model/blob/main/docs/jevre-demo-10s-bgm.mp4) joins two selected five-second windows: live `deadly_corridor` combat on the seven Doom buttons, then a chess controller walking to and playing moves with five keys. The [tensor diagram](https://github.com/azerothl/akasha-model/blob/main/examples/film/diagram.svg) shows the tensors used for each decision. The Doom window came from the supplied joint checkpoint, which averaged 0.60 kills and -97.50 reward across its ten recorded episodes. The chess window came from the stronger chess-only checkpoint, which scored 4 wins, 46 draws and 0 losses in 50 sampled games against a random mover, but 0 wins, 2 draws and 48 losses against Stockfish level 0. The windows were selected for activity and are not typical-play or competence claims.
 

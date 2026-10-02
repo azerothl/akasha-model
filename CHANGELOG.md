@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- First-run Path A usage demo (`examples/usage/demo.py`): tool gate
+  ready/abstain/blocked plus a ticket-router Choice abstain walkthrough;
+  CPU-only, no torch / Hub. README “Try it” pointer and CI smoke.
 - Mix descriptor contract (`akasha_model.mix`, schema + docs): host-computed
   dB/LUFS/centroid/band/crest/correlation/masking JSON state for Choice/Score/Noul
   mix questions; no audio in the package (#56).

@@ -151,9 +151,10 @@ else:
     ...
 ```
 
-Try the scripted scenarios:
+Try the first-run walkthrough, then the fuller scenario list:
 
 ```sh
+python examples/usage/demo.py   # ready / blocked / abstain + ticket router
 python examples/gate/demo.py
 ```
 
@@ -550,6 +551,7 @@ outcomes JSONL; `suggest_threshold_updates` still never auto-writes `DEFAULT_*`.
 
 | Need | Location |
 |------|----------|
+| First-run Path A walkthrough | [examples/usage](../examples/usage/README.md) · `python examples/usage/demo.py` |
 | Run demos / thresholds / go-no-go | [examples/gate/README.md](../examples/gate/README.md) |
 | Path B on host traffic (beyond gate-tiny) | [path-b-real-traffic.md](path-b-real-traffic.md) |
 | Other concrete menus (triage, OS routing, checklist, ensemble, vision) | [use-cases.md](use-cases.md) |

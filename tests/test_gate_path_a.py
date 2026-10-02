@@ -315,3 +315,23 @@ def test_path_a_import_works_without_torch_installed():
     assert akasha_model.evaluate_gate is evaluate_gate
     assert akasha_model.run_gated_call is run_gated_call
     assert importlib.util.find_spec("torch") is None
+
+
+def test_usage_demo_path_a_scenarios():
+    """First-run demo must stay torch-free and assert ready/blocked/abstain."""
+    import runpy
+
+    demo_path = Path(__file__).resolve().parents[1] / "examples" / "usage" / "demo.py"
+    ns = runpy.run_path(str(demo_path))
+    gate_rows = ns["run_tool_gate"]()
+    assert [title for title, _ in gate_rows] == [
+        "Safe read",
+        "Delete without confirmation",
+        "Ambiguous broadcast (split choice mass)",
+    ]
+    assert "ready" in gate_rows[0][1].lower()
+    assert "blocked" in gate_rows[1][1].lower()
+    assert "abstain" in gate_rows[2][1].lower()
+    triage = ns["run_ticket_router"]()
+    assert "route → refund" in triage[0][1]
+    assert "abstain" in triage[1][1]
