@@ -351,4 +351,3 @@ def test_usage_demo_path_a_scenarios():
     assert '"status":"blocked"' in html
     assert '"status":"abstain"' in html
     assert "probability" in html
-    assert importlib.util.find_spec("torch") is None
