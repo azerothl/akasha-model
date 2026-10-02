@@ -46,6 +46,11 @@ jobs:
           .venv/bin/python examples/gate/demo.py
           .venv/bin/python examples/gate/host_demo.py
           .venv/bin/python examples/gate/outcomes_demo.py --log data/gate/outcomes-ci.jsonl
+          PYTHONPATH=examples/tetris .venv/bin/pytest -q examples/tetris/test_smoke.py
+          .venv/bin/python examples/tetris/play.py --out examples/tetris/out/demo.html --pieces 8
+          test -s examples/tetris/out/demo.html
+          grep -q 'path_a_heuristic' examples/tetris/out/demo.html
+          grep -q '"status":"locked"' examples/tetris/out/demo.html
 
   core:
     name: core
@@ -77,6 +82,13 @@ jobs:
           .venv/bin/python examples/usage/demo.py
           .venv/bin/python examples/usage/visual_demo.py --out examples/usage/out/demo.html
           test -s examples/usage/out/demo.html
+
+      - name: Tetris Choice demo (Path A)
+        run: |
+          PYTHONPATH=examples/tetris .venv/bin/pytest -q examples/tetris/test_smoke.py
+          .venv/bin/python examples/tetris/play.py --out examples/tetris/out/demo.html --pieces 8
+          test -s examples/tetris/out/demo.html
+          grep -q 'path_a_heuristic' examples/tetris/out/demo.html
 
       - name: Gate demo (no side effects)
         run: .venv/bin/python examples/gate/demo.py

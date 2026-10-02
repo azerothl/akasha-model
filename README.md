@@ -24,6 +24,14 @@ python examples/usage/visual_demo.py --open
 
 This writes a browser page (`examples/usage/out/demo.html`) that steps through **state → typed signals → probability bars → ready / abstain / blocked** rationale (tool gate, then ticket-router abstain). Text-only fallback: `python examples/usage/demo.py`. Details: [examples/usage](examples/usage/README.md). Deeper gate / host / Path B: [examples/gate](examples/gate/README.md) and [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md).
 
+**Real-time typed Choice (Tetris):** engine enumerates legal placements → Choice over IDs → host verifies cells before lock. Path A heuristic, CPU-only:
+
+```sh
+python examples/tetris/play.py --open
+```
+
+Details: [examples/tetris](examples/tetris/README.md).
+
 ## Vision film demo
 
 The same option-attention head can score controller buttons from image patches. [This ten-second film](https://github.com/azerothl/akasha-model/blob/main/docs/jevre-demo-10s-bgm.mp4) joins two selected five-second windows: live `deadly_corridor` combat on the seven Doom buttons, then a chess controller walking to and playing moves with five keys. The [tensor diagram](https://github.com/azerothl/akasha-model/blob/main/examples/film/diagram.svg) shows the tensors used for each decision. The Doom window came from the supplied joint checkpoint, which averaged 0.60 kills and -97.50 reward across its ten recorded episodes. The chess window came from the stronger chess-only checkpoint, which scored 4 wins, 46 draws and 0 losses in 50 sampled games against a random mover, but 0 wins, 2 draws and 48 losses against Stockfish level 0. The windows were selected for activity and are not typical-play or competence claims.
