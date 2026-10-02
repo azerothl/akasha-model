@@ -56,9 +56,9 @@ OS hosts that use scripted `GateSignals` + `evaluate_gate` / `run_gated_call`
 do **not** need PyTorch:
 
 ```sh
-uv pip install "akasha-model==0.2.0"
+uv pip install "akasha-model==0.3.0"
 # or pin the git tag:
-uv pip install "akasha-model @ git+https://github.com/azerothl/akasha-model.git@v0.2.0"
+uv pip install "akasha-model @ git+https://github.com/azerothl/akasha-model.git@v0.3.0"
 # or from a checkout:
 uv pip install -e '.[dev]'
 ```
@@ -73,9 +73,9 @@ See [CHANGELOG.md](../CHANGELOG.md). Integrator surface: `evaluate_gate`,
 ### Full package (Path B / train / vision)
 
 ```sh
-uv pip install "akasha-model[torch]==0.2.0"
+uv pip install "akasha-model[torch]==0.3.0"
 # or pin the git tag:
-uv pip install "akasha-model[torch] @ git+https://github.com/azerothl/akasha-model.git@v0.2.0"
+uv pip install "akasha-model[torch] @ git+https://github.com/azerothl/akasha-model.git@v0.3.0"
 # or from a checkout:
 uv pip install -e '.[dev,torch]'
 ```

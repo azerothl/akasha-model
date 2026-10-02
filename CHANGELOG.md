@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [0.3.0] - 2026-10-02
 
-- Tetris demo (`examples/tetris/play.py`): default is a **new random 7-bag +
-  lock-sample seed each run** (HUD shows `seed N (this run)`); `--seed N`
-  remains for reproducible replays. Spawn column stays standard Tetris, not
-  random X.
+Second tagged release: mix Path A surface, first-run demos, presentation site,
+and offline Path B helpers. Install from PyPI or pin a git tag:
+
+```text
+pip install akasha-model==0.3.0
+# or
+akasha-model @ git+https://github.com/azerothl/akasha-model.git@v0.3.0
+```
 
 ### Added
 
@@ -48,6 +52,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Offline Path B helpers (`akasha_model.offline`): local `.pt` load with
   network denial, clear model-absent status; ONNX/GGUF export deferred until a
   mix MASK checkpoint exists (#62).
+- Presentation site with GitHub Pages deploy (`site/`,
+  https://azerothl.github.io/akasha-model/) (#79, #80).
+
+### Changed
+
+- Tetris demo (`examples/tetris/play.py`): default is a **new random 7-bag +
+  lock-sample seed each run** (HUD shows `seed N (this run)`); `--seed N`
+  remains for reproducible replays. Spawn column stays standard Tetris, not
+  random X.
 
 ### Docs
 
@@ -95,4 +108,5 @@ akasha-model @ git+https://github.com/azerothl/akasha-model.git@v0.2.0
 - [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md)
 - [examples/gate/README.md](examples/gate/README.md)
 
+[0.3.0]: https://github.com/azerothl/akasha-model/releases/tag/v0.3.0
 [0.2.0]: https://github.com/azerothl/akasha-model/releases/tag/v0.2.0
