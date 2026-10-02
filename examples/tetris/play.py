@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import secrets
 import sys
 import webbrowser
 from pathlib import Path
@@ -29,6 +30,7 @@ from typing import Any
 from engine import (
     ActivePiece,
     Placement,
+    SPAWN_COL,
     SevenBag,
     board_to_rows,
     drop_interval_ms,
@@ -52,6 +54,16 @@ DEFAULT_OUT = ROOT / "out" / "demo.html"
 # Soft ceiling so a runaway heuristic game cannot write an unbounded HTML file.
 # Default play has no artificial short cap: stop on game over (or this safety).
 DEFAULT_SAFETY_MAX_PIECES = 120
+SEED_MASK = 2**31
+
+
+def resolve_seed(seed: int | None) -> tuple[int, str]:
+    """Return ``(seed, source)``. ``None`` draws a fresh seed each call."""
+    if seed is None:
+        return secrets.randbelow(SEED_MASK), "random"
+    if seed < 0:
+        raise ValueError("seed must be >= 0")
+    return int(seed), "fixed"
 
 
 def _placement_payload(item: Placement) -> dict[str, Any]:
@@ -140,7 +152,7 @@ def _frame(
 def run_game(
     *,
     pieces: int | None = None,
-    seed: int = 0,
+    seed: int | None = None,
     temperature: float = 4.0,
     safety_max_pieces: int = DEFAULT_SAFETY_MAX_PIECES,
     sample: bool = True,
@@ -151,9 +163,12 @@ def run_game(
     spawn is blocked / fewer than two legal locks, the optional ``pieces``
     argument (CI), or ``safety_max_pieces``.
 
-    By default the locked placement is **sampled** from the Choice mass (seeded),
-    so imperfect play can reach a real game over instead of looping on argmax.
+    ``seed=None`` (the default) draws a fresh 7-bag + sample seed so each run
+    — and each ``play.py`` invocation / page regenerate — is a new sequence.
+    Pass an integer to replay. Locks are **sampled** from the Choice mass
+    unless ``sample=False`` (argmax / ``--greedy``).
     """
+    seed, seed_source = resolve_seed(seed)
     board = empty_board()
     bag = SevenBag(seed=seed)
     rng = random.Random(seed ^ 0xA5A5)
@@ -398,16 +413,18 @@ def run_game(
         "scorer": "path_a_heuristic",
         "mode": "realtime_gravity",
         "note": (
-            "Random pieces fall from the top with visible gravity. "
-            "Choice picks among engine-enumerated locks labelled by piece, "
-            "rotation and column; probability bars are on the right. "
-            "The next-piece preview feeds a one-ply look-ahead into scoring. "
-            "Locks are sampled from the probability mass (seeded) so play can "
-            "reach a real game over; press Stop anytime to end the replay. "
-            "The host verifies cells, then the piece rotates, shifts, and drops. "
-            "Tempo accelerates as score (and level) rise. Path A heuristic — no torch."
+            "Piece types come from a 7-bag (this run's seed). Spawn column is "
+            "standard Tetris (centred, not random X). Choice samples a legal "
+            "landing from the softmax unless greedy/argmax. Gravity is visible; "
+            "the next-piece preview feeds a one-ply look-ahead. Host verifies "
+            "cells, then the piece rotates, shifts, and drops. Tempo accelerates "
+            "as score (and level) rise. Path A heuristic — no torch. "
+            "This HTML is one recorded run; re-run play.py for a new bag."
         ),
         "seed": seed,
+        "seed_source": seed_source,
+        "spawn_col": SPAWN_COL,
+        "spawn_x_random": False,
         "pieces_requested": pieces,
         "safety_max_pieces": safety_max_pieces,
         "sample_locks": sample,
@@ -420,6 +437,11 @@ def run_game(
         "label_legend": (
             "Each bar label is a legal lock: "
             "'T rot=R col=3' means piece T, rotation R (0/R/2/L), leftmost column 3."
+        ),
+        "rng_hud": (
+            f"Type: 7-bag ({seed_source} seed {seed}) · "
+            f"spawn: col {SPAWN_COL} (standard, not random X) · "
+            f"lock: {'softmax sample' if sample else 'greedy argmax'}"
         ),
         "steps": steps,
     }
@@ -437,6 +459,7 @@ def render_html(trace: dict[str, Any], template: Path = TEMPLATE) -> str:
 def print_text(trace: dict[str, Any]) -> None:
     print(f"{trace['title']} · path {trace['path']} · {trace['scorer']} · {trace['mode']}")
     print(trace["note"])
+    print(trace.get("rng_hud", ""))
     print(trace.get("label_legend", ""))
     print()
     for step in trace["steps"]:
@@ -503,7 +526,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Always lock the Choice argmax instead of sampling (may never game-over)",
     )
-    parser.add_argument("--seed", type=int, default=0, help="7-bag + sample seed (default: 0)")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="7-bag + lock-sample seed. Default: a new random seed every run.",
+    )
     parser.add_argument(
         "--temperature",
         type=float,
@@ -549,6 +577,8 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("--pieces must be >= 1")
     if args.safety_max_pieces < 1:
         raise SystemExit("--safety-max-pieces must be >= 1")
+    if args.seed is not None and args.seed < 0:
+        raise SystemExit("--seed must be >= 0")
 
     trace = run_game(
         pieces=args.pieces,
@@ -571,6 +601,13 @@ def main(argv: list[str] | None = None) -> int:
             f"level {trace['final_level']} · drop {trace['final_drop_ms']}ms · "
             f"stop {trace.get('stop_reason')} · path {trace['path']}"
         )
+        seed_src = trace.get("seed_source", "fixed")
+        replay = (
+            f"; replay with --seed {trace['seed']}"
+            if seed_src == "random"
+            else ""
+        )
+        print(f"Seed {trace['seed']} ({seed_src}{replay}).")
         print(
             "Open the HTML: falling blocks + next preview + Choice probs. "
             "Stop the replay anytime."

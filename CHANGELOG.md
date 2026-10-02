@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Tetris demo (`examples/tetris/play.py`): default is a **new random 7-bag +
+  lock-sample seed each run** (HUD shows `seed N (this run)`); `--seed N`
+  remains for reproducible replays. Spawn column stays standard Tetris, not
+  random X.
+
 ### Added
 
 - First-run Path A usage demo (`examples/usage/demo.py`): tool gate

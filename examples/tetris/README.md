@@ -11,9 +11,21 @@ still picks among engine-enumerated legal locks (probability bars on the side).
 4. **Host** re-checks the ID and exact cells **before** locking.
 
 The game runs **until game over** (or you press **Stop** in the HTML replay).
-Locks are **sampled** from the Choice probabilities (seeded) so imperfect play
-can stack out — the locked row is therefore **not always the highest bar**
-(`sampled ≠ argmax`). Use `--greedy` to always lock argmax. `--pieces N`
+
+**What is random vs not**
+
+| What | Source |
+|------|--------|
+| Piece **type** sequence | 7-bag shuffled with this run's seed (default: **new seed every `play.py` run**) |
+| Spawn **column** | Standard Tetris origin (`SPAWN_COL = 3`), **not** random X |
+| Landing / lock | Softmax **sample** among legal placements (unless `--greedy` argmax) |
+
+The HTML file is a **recorded replay** of one generated game. Reloading that
+page replays the same trace; run `play.py` again (or omit `--seed`) for a
+new bag + new sampled locks.
+
+Locks are sampled so imperfect play can stack out — the locked row is
+therefore **not always the highest bar** (`sampled ≠ argmax`). `--pieces N`
 remains for short CI runs.
 
 No torch / Hub. Scoring is a deterministic board heuristic turned into a
@@ -31,6 +43,20 @@ python examples/tetris/play.py --open
 Writes `examples/tetris/out/demo.html`. **Play** auto-starts: watch pieces
 spawn, next-box update, Choice bars update, then gravity pull the piece down.
 Drop interval shrinks with level (lines cleared). Press **Stop** anytime.
+The chrome shows `seed N (this run)` plus a one-line HUD for bag / spawn /
+lock. Re-run the command to draw a new seed.
+
+Replay the same types + sampled locks:
+
+```sh
+python examples/tetris/play.py --open --seed 42
+```
+
+Argmax landings (types still follow the bag):
+
+```sh
+python examples/tetris/play.py --open --seed 42 --greedy
+```
 
 Placement bar labels look like `T rot=R col=3` (piece, rotation `0/R/2/L`,
 leftmost column) — not opaque `p0` / `p3` ids.
@@ -39,6 +65,7 @@ leftmost column) — not opaque `p0` / `p3` ids.
 
 ```sh
 python examples/tetris/play.py --text --no-html
+python examples/tetris/play.py --text --no-html --seed 7
 ```
 
 ## Smoke

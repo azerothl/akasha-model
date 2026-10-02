@@ -56,6 +56,8 @@ jobs:
           grep -q 'Placement probabilities' examples/tetris/out/demo.html
           grep -q 'rot=' examples/tetris/out/demo.html
           grep -q 'next_piece' examples/tetris/out/demo.html
+          grep -q 'rng-hud' examples/tetris/out/demo.html
+          grep -q 'this run' examples/tetris/out/demo.html
 
   core:
     name: core
@@ -99,6 +101,8 @@ jobs:
           grep -q 'Placement probabilities' examples/tetris/out/demo.html
           grep -q 'rot=' examples/tetris/out/demo.html
           grep -q 'next_piece' examples/tetris/out/demo.html
+          grep -q 'rng-hud' examples/tetris/out/demo.html
+          grep -q 'this run' examples/tetris/out/demo.html
 
       - name: Gate demo (no side effects)
         run: .venv/bin/python examples/gate/demo.py
