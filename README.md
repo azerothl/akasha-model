@@ -24,7 +24,7 @@ python examples/usage/visual_demo.py --open
 
 This writes a browser page (`examples/usage/out/demo.html`) that steps through **state → typed signals → probability bars → ready / abstain / blocked** rationale (tool gate, then ticket-router abstain). Text-only fallback: `python examples/usage/demo.py`. Details: [examples/usage](examples/usage/README.md). Deeper gate / host / Path B: [examples/gate](examples/gate/README.md) and [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md).
 
-**Real-time typed Choice (Tetris):** engine enumerates legal placements → Choice over IDs → host verifies cells before lock. Path A heuristic, CPU-only:
+**Realtime Tetris (falling blocks + Choice):** pieces spawn at the top and fall with visible gravity; tempo accelerates with level. Choice still picks among legal lock IDs (probs on the side); host verifies before lock. Path A heuristic, CPU-only:
 
 ```sh
 python examples/tetris/play.py --open

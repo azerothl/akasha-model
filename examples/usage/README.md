@@ -31,7 +31,7 @@ python examples/usage/demo.py
 
 Deeper demos:
 
-- [examples/tetris](../tetris/README.md) — paced Tetris: enumerate legal placements → Choice over IDs → host verify before lock
+- [examples/tetris](../tetris/README.md) — realtime Tetris: falling pieces + accelerating tempo; Choice over legal locks with visible probs
 - [examples/gate](../gate/README.md) — full gate / host / outcomes / Path B tiny scorer
 - [examples/film](../film/) — Doom/chess frame + matrix film from `play.py --trace`
 - [docs/using-the-tool-gate.md](../../docs/using-the-tool-gate.md) — integrator guide
