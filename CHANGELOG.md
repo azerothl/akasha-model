@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mix proposal batches (`akasha_model.mix_proposal`): confirmable before/after
   change sets with one-action undo and audit envelopes via `build_audit_envelope`
   (#61).
+- Synthetic mix JSONL generator + anti-leakage audit (Option A written rules,
+  per-row licence/source fields, no audio) (#58).
 
 ### Docs
 
