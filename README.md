@@ -1,5 +1,7 @@
 # Akasha Model
 
+**[Presentation site](https://azerothl.github.io/akasha-model/)** (static landing under [`site/`](site/); deploys via GitHub Pages).
+
 Train a small one-pass model that chooses among a changing list of typed options. For Akasha OS the primary product surface is the **tool gate** (authorize / abstain / block a proposed call) — not a general-purpose System 1 clone.
 
 Akasha Model takes a piece of state (text or JSON) and a list of questions. Each question is `choice`, `score` or `noul`. It returns one probability distribution per question in a single forward pass, instead of writing an answer word by word.
