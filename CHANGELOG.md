@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (#61).
 - Synthetic mix JSONL generator + anti-leakage audit (Option A written rules,
   per-row licence/source fields, no audio) (#58).
+- Mix number-sensitivity protocol (`scripts/evaluate_mix_number_sensitivity.py`):
+  baseline / shuffled / perturbed / removed-number controls with ECE and
+  coverage-risk; CPU report for rule_prior + majority_prior; GPU 16GB noted as
+  hardware follow-up (#59).
 
 ### Docs
 
