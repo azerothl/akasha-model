@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Mix descriptor contract (`akasha_model.mix`, schema + docs): host-computed
+  dB/LUFS/centroid/band/crest/correlation/masking JSON state for Choice/Score/Noul
+  mix questions; no audio in the package (#56).
+
 ### Docs
 
 - README: clarify PyPI vs checkout contents, gate-first framing, schema-first
