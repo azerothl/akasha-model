@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mix preset catalogue (`akasha_model.mix_presets`): ordered Choice/Score picks
   map to explicit gain/pan/EQ/compressor values via versioned JSON; confidence
   threshold is a required host parameter (#57).
+- Mix proposal batches (`akasha_model.mix_proposal`): confirmable before/after
+  change sets with one-action undo and audit envelopes via `build_audit_envelope`
+  (#61).
 
 ### Docs
 

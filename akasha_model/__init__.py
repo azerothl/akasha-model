@@ -76,6 +76,12 @@ from .mix import (
     validate_mix_state,
 )
 from .mix_presets import MixPresetCatalog, MixSettingsProposal, propose_mix_settings
+from .mix_proposal import (
+    MixChange,
+    MixProposalBatch,
+    build_mix_audit_envelope,
+    build_mix_proposal_batch,
+)
 
 __version__ = "0.2.0"
 
@@ -106,11 +112,12 @@ __all__ = [
     "DEFAULT_MIN_CHOICE_PROBABILITY", "DEFAULT_NOUL_THRESHOLD",
     "AuthorityProfile", "CatalogPolicy", "DecisionModel", "MultiQuestionCollator",
     "MultiQuestionDataset", "MultiQuestionTinyScorer", "GateOutcomeRecord",
-    "GateSignals", "HostOutcome", "MIX_SCHEMA_VERSION", "MixPresetCatalog",
+    "GateSignals", "HostOutcome", "MIX_SCHEMA_VERSION", "MixChange",
+    "MixPresetCatalog", "MixProposalBatch",
     "MixSessionState", "MixSettingsProposal",
     "PairMasking", "ToolHost", "ToolProposal", "ToolCallPlan",
     "ToolCallPlanner", "ToolSpec", "TrackDescriptors", "append_outcome",
-    "build_audit_envelope",
+    "build_audit_envelope", "build_mix_audit_envelope", "build_mix_proposal_batch",
     "check_catalog_policy", "content_hash", "convert_typed_row",
     "default_gate_planner", "describe_outcome", "describe_plan",
     "dispatch_plan", "envelope_from_dict", "envelope_to_dict", "evaluate_gate",
