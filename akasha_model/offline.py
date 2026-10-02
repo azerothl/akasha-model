@@ -8,10 +8,16 @@ local checkpoint is missing.
 from __future__ import annotations
 
 import os
+import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator
+
+try:
+    import resource as _resource
+except ImportError:  # Windows CPython has no resource module
+    _resource = None
 
 # User-facing status (no raw filesystem exception as the primary message).
 MODEL_ABSENT_STATUS = (
@@ -119,9 +125,45 @@ def load_offline_torch_checkpoint(
 
 
 def measure_rss_mb() -> float:
-    import resource
+    """Peak resident set size in MiB (best-effort; 0.0 if unavailable)."""
+    if _resource is not None:
+        usage = float(_resource.getrusage(_resource.RUSAGE_SELF).ru_maxrss)
+        # Linux reports KiB; macOS reports bytes.
+        if sys.platform == "darwin":
+            return round(usage / (1024.0 * 1024.0), 2)
+        return round(usage / 1024.0, 2)
+    if sys.platform.startswith("win"):
+        import ctypes
+        from ctypes import wintypes
 
-    return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 2)
+        class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+            _fields_ = [
+                ("cb", wintypes.DWORD),
+                ("PageFaultCount", wintypes.DWORD),
+                ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t),
+                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t),
+            ]
+
+        psapi = ctypes.WinDLL("psapi")
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        get_mem = psapi.GetProcessMemoryInfo
+        get_mem.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(PROCESS_MEMORY_COUNTERS),
+            wintypes.DWORD,
+        ]
+        get_mem.restype = wintypes.BOOL
+        counters = PROCESS_MEMORY_COUNTERS()
+        counters.cb = ctypes.sizeof(counters)
+        if get_mem(kernel32.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+            return round(counters.PeakWorkingSetSize / (1024.0 * 1024.0), 2)
+    return 0.0
 
 
 __all__ = [

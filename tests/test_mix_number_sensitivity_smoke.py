@@ -52,6 +52,56 @@ def test_protocol_runs_on_synth_data(tmp_path: Path) -> None:
     assert any("GPU" in note or "gpu" in note.lower() for note in report["device_notes"])
 
 
+def test_rss_helper_works_on_this_platform() -> None:
+    from akasha_model.offline import measure_rss_mb
+
+    assert measure_rss_mb() >= 0.0
+
+
+def test_french_rewrite_keeps_labels() -> None:
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("mix_sens", EVAL)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    row = {
+        "context": {"session_id": "x", "tracks": [], "pair_masking": []},
+        "questions": [
+            {
+                "id": "preset",
+                "type": "choice",
+                "instructions": "Choose a mix preset for this session.",
+                "options": [
+                    {"name": "vocal_forward", "description": "a"},
+                    {"name": "balanced", "description": "b"},
+                    {"name": "bass_heavy", "description": "c"},
+                ],
+                "label": 1,
+            },
+            {
+                "id": "vocal.gain",
+                "type": "score",
+                "instructions": "Ordered vocal gain adjustment.",
+                "levels": ["much quieter", "quieter", "unchanged", "louder", "much louder"],
+                "label": 2,
+            },
+            {
+                "id": "vocal_masked_by_bass",
+                "type": "noul",
+                "instructions": "Is the vocal masked by the bass?",
+                "criteria": {"true": "yes", "false": "no"},
+                "label": 0,
+            },
+        ],
+    }
+    rewritten = mod.rewrite_french([row])[0]
+    assert rewritten["questions"][0]["instructions"].startswith("Choisissez")
+    assert rewritten["questions"][0]["label"] == 1
+    assert rewritten["questions"][1]["label"] == 2
+    assert rewritten["questions"][2]["label"] == 0
+
+
 def test_french_instructions_build_primitives() -> None:
     choice = ChoiceQuestion(
         "preset",
