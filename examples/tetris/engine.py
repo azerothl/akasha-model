@@ -326,6 +326,21 @@ def score_placement(
     )
 
 
+def format_placement_id(
+    piece: str,
+    rotation: str,
+    column: int,
+    landing_row: int,
+    *,
+    disambiguator: int = 0,
+) -> str:
+    """Human-readable lock id: piece, rotation, column (and row if needed)."""
+    base = f"{piece} rot={rotation} col={column}"
+    if disambiguator <= 0:
+        return base
+    return f"{base} row={landing_row}"
+
+
 def enumerate_placements(
     board: Sequence[Sequence[str | None]],
     piece: str,
@@ -335,6 +350,7 @@ def enumerate_placements(
         raise ValueError(f"unknown piece {piece!r}")
     found: list[Placement] = []
     seen_cells: set[tuple[tuple[int, int], ...]] = set()
+    used_ids: set[str] = set()
     for rotation_index in range(4):
         for origin_col in range(-2, WIDTH):
             origin_row = drop_origin(board, piece, rotation_index, origin_col)
@@ -351,12 +367,25 @@ def enumerate_placements(
             holes, aggregate_height, bumpiness = board_metrics(next_board)
             column = min(col for col, _ in cells)
             landing_row = min(row for _, row in cells)
-            placement_id = f"p{len(found)}"
+            rotation = ROTATION_LABELS[rotation_index]
+            placement_id = format_placement_id(piece, rotation, column, landing_row)
+            if placement_id in used_ids:
+                placement_id = format_placement_id(
+                    piece, rotation, column, landing_row, disambiguator=1
+                )
+            suffix = 2
+            while placement_id in used_ids:
+                placement_id = (
+                    f"{format_placement_id(piece, rotation, column, landing_row, disambiguator=1)}"
+                    f"#{suffix}"
+                )
+                suffix += 1
+            used_ids.add(placement_id)
             found.append(
                 Placement(
                     placement_id=placement_id,
                     piece=piece,
-                    rotation=ROTATION_LABELS[rotation_index],
+                    rotation=rotation,
                     rotation_index=rotation_index,
                     column=column,
                     landing_row=landing_row,
@@ -487,14 +516,23 @@ class SevenBag:
         self._bag: list[str] = []
         self._drawn = 0
 
+    def _ensure_bag(self) -> None:
+        if self._bag:
+            return
+        order = list(BAG_ORDER)
+        state = (self._seed * 1103515245 + self._drawn * 12345) & 0x7FFFFFFF
+        for i in range(len(order) - 1, 0, -1):
+            state = (1103515245 * state + 12345) & 0x7FFFFFFF
+            j = state % (i + 1)
+            order[i], order[j] = order[j], order[i]
+        self._bag = order
+
+    def peek(self) -> str:
+        """Upcoming piece without consuming it (next-box preview)."""
+        self._ensure_bag()
+        return self._bag[-1]
+
     def next_piece(self) -> str:
-        if not self._bag:
-            order = list(BAG_ORDER)
-            state = (self._seed * 1103515245 + self._drawn * 12345) & 0x7FFFFFFF
-            for i in range(len(order) - 1, 0, -1):
-                state = (1103515245 * state + 12345) & 0x7FFFFFFF
-                j = state % (i + 1)
-                order[i], order[j] = order[j], order[i]
-            self._bag = order
+        self._ensure_bag()
         self._drawn += 1
         return self._bag.pop()

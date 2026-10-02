@@ -16,9 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `visual.html`): browser page with state, typed Choice/Score/Noul bars,
   confidence, and ready/abstain/blocked rationale; shared `decision_trace.py`.
 - Tetris realtime demo (`examples/tetris/`): falling pieces with visible
-  gravity, level-based accelerating drop tempo, Path A Choice over legal lock
-  IDs with probability bars, host verify before lock; browser UI
-  (`play.py --open`) plus text fallback; CPU-only.
+  gravity, level-based accelerating drop tempo, Path A Choice over legal locks
+  with human-readable labels and probability bars, next-piece preview feeding
+  one-ply look-ahead, play until game over (or Stop), host verify before lock;
+  browser UI (`play.py --open`) plus text fallback; CPU-only.
 - Mix descriptor contract (`akasha_model.mix`, schema + docs): host-computed
   dB/LUFS/centroid/band/crest/correlation/masking JSON state for Choice/Score/Noul
   mix questions; no audio in the package (#56).

@@ -2,15 +2,20 @@
 
 A playable-feeling Tetris example: **random pieces fall from the top** with
 visible gravity, tempo accelerates as the level rises, and Akasha **Choice**
-still picks among engine-enumerated legal locks (probabilities on the side).
+still picks among engine-enumerated legal locks (probability bars on the side).
 
 1. **Engine** enumerates legal final placements for the active piece.
-2. **Choice** picks among those placement IDs (with probabilities).
+2. **Choice** picks among those placements (human-readable labels + probs),
+   using the **next-piece preview** in a one-ply look-ahead.
 3. **Animation** rotates / shifts the piece, then drops it row by row.
 4. **Host** re-checks the ID and exact cells **before** locking.
 
+The game runs **until game over** (or you press **Stop** in the HTML replay).
+Locks are **sampled** from the Choice probabilities (seeded) so imperfect play
+can stack out; `--greedy` forces argmax. `--pieces N` remains for short CI runs.
+
 No torch / Hub. Scoring is a deterministic board heuristic turned into a
-softmax — good enough for a short offline game. A future MASK / Path B scorer
+softmax — good enough for an offline game. A future MASK / Path B scorer
 can replace `scorer.score_placements` over the same IDs; keep the heuristic as
 the CI and first-run fallback.
 
@@ -22,8 +27,11 @@ python examples/tetris/play.py --open
 ```
 
 Writes `examples/tetris/out/demo.html`. **Play** auto-starts: watch pieces
-spawn, Choice bars update, then gravity pull the piece down. Drop interval
-shrinks with level (lines cleared).
+spawn, next-box update, Choice bars update, then gravity pull the piece down.
+Drop interval shrinks with level (lines cleared). Press **Stop** anytime.
+
+Placement bar labels look like `T rot=R col=3` (piece, rotation `0/R/2/L`,
+leftmost column) — not opaque `p0` / `p3` ids.
 
 ## Text-only
 
@@ -41,10 +49,10 @@ PYTHONPATH=examples/tetris pytest -q examples/tetris/test_smoke.py
 
 | File | Role |
 |------|------|
-| `engine.py` | Board, 7-bag, gravity, active piece, placement enum, host verify |
-| `scorer.py` | Path A heuristic → `ChoiceQuestion` / `choice_result` |
-| `play.py` | Game + falling frames → HTML / text / JSON |
-| `visual.html` | Browser UI: live fall + accelerating tempo + probs |
+| `engine.py` | Board, 7-bag (+ peek), gravity, placement enum, host verify |
+| `scorer.py` | Path A heuristic + next-piece look-ahead → Choice |
+| `play.py` | Game until over + falling frames → HTML / text / JSON |
+| `visual.html` | Browser UI: fall + next preview + probability bars |
 | `test_smoke.py` | Physics + Choice + gravity + HTML smoke |
 
 Coordinates: columns `0..9` left→right, rows `0..19` top→bottom. Gravity

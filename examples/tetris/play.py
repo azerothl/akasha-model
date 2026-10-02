@@ -1,8 +1,9 @@
 """Realtime Tetris demo: falling pieces + Choice over legal locks.
 
-Pieces spawn at the top, Choice picks a verified placement, then the piece
-rotates/shifts and falls with visible gravity. Drop speed accelerates as
-lines / level rise.
+Pieces spawn at the top, Choice picks a verified placement (using the next
+piece preview in the heuristic), then the piece rotates/shifts and falls with
+visible gravity. The game runs until game over (or an optional piece cap for
+CI). Drop speed accelerates as lines / level rise.
 
 Path A only (heuristic softmax). Optional Path B is not required; keep this
 heuristic as the offline / CI fallback.
@@ -19,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 import webbrowser
 from pathlib import Path
@@ -41,16 +43,21 @@ from engine import (
     spawn_piece,
     verify_placement,
 )
-from scorer import score_placements, top_alternatives
+from scorer import sample_placement, score_placements, top_alternatives
 
 ROOT = Path(__file__).resolve().parent
 TEMPLATE = ROOT / "visual.html"
 DEFAULT_OUT = ROOT / "out" / "demo.html"
 
+# Soft ceiling so a runaway heuristic game cannot write an unbounded HTML file.
+# Default play has no artificial short cap: stop on game over (or this safety).
+DEFAULT_SAFETY_MAX_PIECES = 120
+
 
 def _placement_payload(item: Placement) -> dict[str, Any]:
     return {
         "id": item.placement_id,
+        "label": item.placement_id,
         "piece": item.piece,
         "rotation": item.rotation,
         "rotation_index": item.rotation_index,
@@ -80,13 +87,16 @@ def _active_payload(active: ActivePiece | None) -> dict[str, Any] | None:
     }
 
 
-def _choice_payload(result) -> dict[str, Any]:
+def _choice_payload(result, *, locked: str | None = None, sampled: bool = False) -> dict[str, Any]:
+    selected = locked if locked is not None else result.selected
     return {
-        "selected": result.selected,
-        "confidence": round(result.confidence, 4),
+        "selected": selected,
+        "argmax": result.selected,
+        "sampled": sampled,
+        "confidence": round(float(result.probabilities.get(selected, result.confidence)), 4),
         "probabilities": {
             key: round(value, 4)
-            for key, value in top_alternatives(result, limit=8)
+            for key, value in top_alternatives(result, limit=10)
         },
         "all_probabilities": {
             key: round(value, 4)
@@ -105,6 +115,7 @@ def _frame(
     level: int,
     drop_ms: int,
     piece: str | None = None,
+    next_piece: str | None = None,
     active: ActivePiece | None = None,
     ghost: list[list[int]] | None = None,
     hold_ms: int | None = None,
@@ -117,6 +128,7 @@ def _frame(
         "level": level,
         "drop_ms": drop_ms,
         "piece": piece,
+        "next_piece": next_piece,
         "active": _active_payload(active),
         "ghost": ghost or [],
     }
@@ -127,22 +139,40 @@ def _frame(
 
 def run_game(
     *,
-    pieces: int = 18,
-    seed: int = 7,
+    pieces: int | None = None,
+    seed: int = 0,
     temperature: float = 4.0,
+    safety_max_pieces: int = DEFAULT_SAFETY_MAX_PIECES,
+    sample: bool = True,
 ) -> dict[str, Any]:
-    """Play ``pieces`` locks (or until game over) with falling-frame traces."""
+    """Play until game over (or ``pieces`` / safety cap).
+
+    ``pieces=None`` means no intentional short demo cap — keep going until the
+    spawn is blocked / fewer than two legal locks, the optional ``pieces``
+    argument (CI), or ``safety_max_pieces``.
+
+    By default the locked placement is **sampled** from the Choice mass (seeded),
+    so imperfect play can reach a real game over instead of looping on argmax.
+    """
     board = empty_board()
     bag = SevenBag(seed=seed)
+    rng = random.Random(seed ^ 0xA5A5)
     steps: list[dict[str, Any]] = []
     score = 0
     lines_total = 0
     game_over = False
+    hit_cap = False
 
-    for index in range(pieces):
+    if pieces is not None and pieces < 1:
+        raise ValueError("pieces must be >= 1 when set")
+    limit = pieces if pieces is not None else safety_max_pieces
+
+    index = 0
+    while index < limit:
         level = level_for_lines(lines_total)
         drop_ms = drop_interval_ms(level, score)
         piece = bag.next_piece()
+        next_piece = bag.peek()
         before = board_to_rows(board)
         spawned = spawn_piece(board, piece)
         candidates = enumerate_placements(board, piece)
@@ -158,6 +188,7 @@ def run_game(
                     level=level,
                     drop_ms=drop_ms,
                     piece=piece,
+                    next_piece=next_piece,
                     hold_ms=900,
                 )
             ]
@@ -165,13 +196,14 @@ def run_game(
                 {
                     "index": index,
                     "piece": piece,
+                    "next_piece": next_piece,
                     "board_before": before,
                     "candidates": [_placement_payload(item) for item in candidates],
                     "choice": None,
                     "host": {
                         "status": "blocked",
                         "reason": (
-                            "spawn blocked"
+                            "spawn blocked — game over"
                             if spawned is None
                             else "fewer than two legal placements — game over"
                         ),
@@ -187,11 +219,19 @@ def run_game(
             )
             break
 
-        result = score_placements(candidates, temperature=temperature)
-        selected = result.selected
+        result = score_placements(
+            candidates,
+            temperature=temperature,
+            board=board,
+            next_piece=next_piece,
+        )
+        if sample:
+            selected = sample_placement(result, rng)
+        else:
+            selected = result.selected
         assert selected is not None
         verified = verify_placement(board, piece, selected, candidates)
-        choice = _choice_payload(result)
+        choice = _choice_payload(result, locked=selected, sampled=sample)
 
         if not verified.ok or verified.placement is None:
             frames = [
@@ -203,6 +243,7 @@ def run_game(
                     level=level,
                     drop_ms=drop_ms,
                     piece=piece,
+                    next_piece=next_piece,
                     active=spawned,
                     ghost=[list(cell) for cell in ghost_cells(board, spawned)],
                     hold_ms=700,
@@ -212,6 +253,7 @@ def run_game(
                 {
                     "index": index,
                     "piece": piece,
+                    "next_piece": next_piece,
                     "board_before": before,
                     "candidates": [_placement_payload(item) for item in candidates],
                     "choice": choice,
@@ -252,6 +294,7 @@ def run_game(
                 level=level,
                 drop_ms=drop_ms,
                 piece=piece,
+                next_piece=next_piece,
                 active=spawned,
                 ghost=[list(cell) for cell in target.occupied_cells],
                 hold_ms=max(280, min(620, drop_ms)),
@@ -283,6 +326,7 @@ def run_game(
                     level=level,
                     drop_ms=live_drop,
                     piece=piece,
+                    next_piece=next_piece,
                     active=pose,
                     ghost=[list(cell) for cell in target.occupied_cells],
                     hold_ms=hold,
@@ -306,6 +350,7 @@ def run_game(
                 level=level_after,
                 drop_ms=drop_after,
                 piece=piece,
+                next_piece=next_piece,
                 hold_ms=max(160, drop_after // 2),
             )
         )
@@ -314,6 +359,7 @@ def run_game(
             {
                 "index": index,
                 "piece": piece,
+                "next_piece": next_piece,
                 "board_before": before,
                 "candidates": [_placement_payload(item) for item in candidates],
                 "choice": choice,
@@ -332,8 +378,20 @@ def run_game(
                 "frames": frames,
             }
         )
+        index += 1
+    else:
+        # Loop exhausted without game over → intentional or safety cap.
+        hit_cap = True
+        if pieces is None:
+            # Safety ceiling — treat as stopped rather than a true game over.
+            hit_cap = True
 
     final_level = level_for_lines(lines_total)
+    stop_reason = (
+        "game_over"
+        if game_over
+        else ("piece_cap" if pieces is not None and hit_cap else "safety_cap" if hit_cap else "complete")
+    )
     return {
         "title": "Akasha Model — Tetris",
         "path": "A",
@@ -341,17 +399,28 @@ def run_game(
         "mode": "realtime_gravity",
         "note": (
             "Random pieces fall from the top with visible gravity. "
-            "Choice picks among engine-enumerated lock IDs (probs on the right); "
-            "the host verifies cells, then the piece rotates, shifts, and drops. "
+            "Choice picks among engine-enumerated locks labelled by piece, "
+            "rotation and column; probability bars are on the right. "
+            "The next-piece preview feeds a one-ply look-ahead into scoring. "
+            "Locks are sampled from the probability mass (seeded) so play can "
+            "reach a real game over; press Stop anytime to end the replay. "
+            "The host verifies cells, then the piece rotates, shifts, and drops. "
             "Tempo accelerates as score (and level) rise. Path A heuristic — no torch."
         ),
         "seed": seed,
         "pieces_requested": pieces,
+        "safety_max_pieces": safety_max_pieces,
+        "sample_locks": sample,
+        "stop_reason": stop_reason,
         "game_over": game_over,
         "final_score": score,
         "final_lines": lines_total,
         "final_level": final_level,
         "final_drop_ms": drop_interval_ms(final_level, score),
+        "label_legend": (
+            "Each bar label is a legal lock: "
+            "'T rot=R col=3' means piece T, rotation R (0/R/2/L), leftmost column 3."
+        ),
         "steps": steps,
     }
 
@@ -368,13 +437,15 @@ def render_html(trace: dict[str, Any], template: Path = TEMPLATE) -> str:
 def print_text(trace: dict[str, Any]) -> None:
     print(f"{trace['title']} · path {trace['path']} · {trace['scorer']} · {trace['mode']}")
     print(trace["note"])
+    print(trace.get("label_legend", ""))
     print()
     for step in trace["steps"]:
         choice = step.get("choice") or {}
         host = step["host"]
+        nxt = step.get("next_piece") or "—"
         print(
-            f"--- piece {step['index'] + 1}: {step['piece']} · "
-            f"level {step['level']} · drop {step['drop_ms']}ms ---"
+            f"--- piece {step['index'] + 1}: {step['piece']} "
+            f"(next {nxt}) · level {step['level']} · drop {step['drop_ms']}ms ---"
         )
         print(f"legal placements: {len(step['candidates'])}")
         fall_frames = sum(1 for frame in step.get("frames", []) if frame.get("kind") == "fall")
@@ -403,7 +474,7 @@ def print_text(trace: dict[str, Any]) -> None:
         f"done · steps={len(trace['steps'])} "
         f"score={trace['final_score']} lines={trace['final_lines']} "
         f"level={trace['final_level']} drop_ms={trace['final_drop_ms']} "
-        f"game_over={trace['game_over']}"
+        f"game_over={trace['game_over']} stop={trace.get('stop_reason')}"
     )
 
 
@@ -412,10 +483,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--pieces",
         type=int,
-        default=18,
-        help="Number of locks to attempt (default: 18)",
+        default=None,
+        help=(
+            "Optional lock cap (CI / short runs). Default: play until game over "
+            f"(safety ceiling {DEFAULT_SAFETY_MAX_PIECES})."
+        ),
     )
-    parser.add_argument("--seed", type=int, default=7, help="7-bag seed")
+    parser.add_argument(
+        "--safety-max-pieces",
+        type=int,
+        default=DEFAULT_SAFETY_MAX_PIECES,
+        help=(
+            "Hard ceiling when --pieces is omitted "
+            f"(default: {DEFAULT_SAFETY_MAX_PIECES})."
+        ),
+    )
+    parser.add_argument(
+        "--greedy",
+        action="store_true",
+        help="Always lock the Choice argmax instead of sampling (may never game-over)",
+    )
+    parser.add_argument("--seed", type=int, default=0, help="7-bag + sample seed (default: 0)")
     parser.add_argument(
         "--temperature",
         type=float,
@@ -457,13 +545,17 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.pieces < 1:
+    if args.pieces is not None and args.pieces < 1:
         raise SystemExit("--pieces must be >= 1")
+    if args.safety_max_pieces < 1:
+        raise SystemExit("--safety-max-pieces must be >= 1")
 
     trace = run_game(
         pieces=args.pieces,
         seed=args.seed,
         temperature=args.temperature,
+        safety_max_pieces=args.safety_max_pieces,
+        sample=not args.greedy,
     )
 
     if args.text or args.no_html:
@@ -477,9 +569,12 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"Steps: {len(trace['steps'])} · score {trace['final_score']} · "
             f"level {trace['final_level']} · drop {trace['final_drop_ms']}ms · "
-            f"path {trace['path']}"
+            f"stop {trace.get('stop_reason')} · path {trace['path']}"
         )
-        print("Open the HTML: falling blocks + accelerating tempo + Choice probs.")
+        print(
+            "Open the HTML: falling blocks + next preview + Choice probs. "
+            "Stop the replay anytime."
+        )
         if args.open:
             webbrowser.open(args.out.resolve().as_uri())
 
