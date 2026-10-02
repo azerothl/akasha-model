@@ -38,6 +38,11 @@ jobs:
       - name: Gate / host / outcomes demos (no torch)
         run: |
           .venv/bin/python examples/usage/demo.py
+          .venv/bin/python examples/usage/visual_demo.py --out examples/usage/out/demo.html
+          test -s examples/usage/out/demo.html
+          grep -q '"status":"ready"' examples/usage/out/demo.html
+          grep -q '"status":"blocked"' examples/usage/out/demo.html
+          grep -q '"status":"abstain"' examples/usage/out/demo.html
           .venv/bin/python examples/gate/demo.py
           .venv/bin/python examples/gate/host_demo.py
           .venv/bin/python examples/gate/outcomes_demo.py --log data/gate/outcomes-ci.jsonl
@@ -68,7 +73,10 @@ jobs:
           .venv/bin/pytest -q
 
       - name: First-run usage demo (Path A)
-        run: .venv/bin/python examples/usage/demo.py
+        run: |
+          .venv/bin/python examples/usage/demo.py
+          .venv/bin/python examples/usage/visual_demo.py --out examples/usage/out/demo.html
+          test -s examples/usage/out/demo.html
 
       - name: Gate demo (no side effects)
         run: .venv/bin/python examples/gate/demo.py

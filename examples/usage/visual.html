@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Akasha Model — visual usage demo</title>
+<style>
+:root {
+  --bg: #f3efe6;
+  --ink: #1c1a16;
+  --muted: #5c564c;
+  --panel: rgba(255, 252, 246, 0.88);
+  --line: rgba(28, 26, 22, 0.12);
+  --ready: #1f7a4c;
+  --ready-fill: #2f9e64;
+  --abstain: #9a6b14;
+  --abstain-fill: #c48a1a;
+  --blocked: #9b2c2c;
+  --blocked-fill: #c43a3a;
+  --accent: #0d6e6e;
+  --bar-track: rgba(28, 26, 22, 0.08);
+  --shadow: 0 18px 40px rgba(28, 26, 22, 0.08);
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(13, 110, 110, 0.14), transparent 34%),
+    radial-gradient(circle at 88% 0%, rgba(196, 138, 26, 0.12), transparent 28%),
+    linear-gradient(160deg, #efe8da 0%, #f6f2ea 48%, #e7efe9 100%);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+}
+body { padding: 28px 18px 64px; }
+.shell { width: min(1080px, 100%); margin: 0 auto; }
+header {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.brand {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin: 0;
+}
+.lede {
+  margin: 0;
+  max-width: 46rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 14px;
+}
+.nav button {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  padding: 10px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.92rem;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+.nav button:hover { transform: translateY(-1px); }
+.nav button[aria-current="true"] {
+  border-color: var(--accent);
+  background: #dff2f0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 1.05fr 1.2fr;
+  gap: 16px;
+}
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 18px 18px 16px;
+}
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.situation {
+  font-size: 1.25rem;
+  line-height: 1.35;
+  margin: 0 0 14px;
+}
+.kv {
+  display: grid;
+  gap: 8px;
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.9rem;
+}
+.kv div {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.kv code, .mono {
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.86rem;
+}
+.questions { display: grid; gap: 14px; }
+.question {
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.55);
+}
+.q-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.q-type {
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.q-prompt { margin: 0 0 10px; }
+.bars { display: grid; gap: 8px; }
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 8rem) 1fr 3.2rem;
+  gap: 8px;
+  align-items: center;
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.86rem;
+}
+.track {
+  height: 12px;
+  background: var(--bar-track);
+  overflow: hidden;
+  position: relative;
+}
+.fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 480ms cubic-bezier(.2,.8,.2,1);
+}
+.bar-row.selected .fill { background: var(--ready-fill); }
+.bar-row.fail .fill { background: var(--blocked-fill); }
+.pct {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.meter {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.84rem;
+}
+.meter .track { height: 8px; }
+.verdict {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: #fffdf8;
+}
+.verdict[data-status="ready"] { border-left: 5px solid var(--ready); }
+.verdict[data-status="abstain"] { border-left: 5px solid var(--abstain); }
+.verdict[data-status="blocked"] { border-left: 5px solid var(--blocked); }
+.status {
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+.verdict[data-status="ready"] .status { color: var(--ready); }
+.verdict[data-status="abstain"] .status { color: var(--abstain); }
+.verdict[data-status="blocked"] .status { color: var(--blocked); }
+.reason {
+  margin: 0 0 10px;
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.controls button {
+  appearance: none;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #f7f3ea;
+  padding: 10px 14px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.95rem;
+}
+.controls button.secondary {
+  background: transparent;
+  color: var(--ink);
+}
+.footnote {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.thresholds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.thresholds span {
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  padding: 4px 8px;
+}
+</style>
+<body>
+  <div class="shell">
+    <header>
+      <p class="brand" id="title">Akasha Model</p>
+      <p class="lede" id="note"></p>
+      <div class="meta" id="meta"></div>
+    </header>
+    <nav class="nav" id="nav" aria-label="Decision steps"></nav>
+    <div class="layout">
+      <section class="panel" aria-labelledby="state-heading">
+        <h2 id="state-heading">State</h2>
+        <p class="situation" id="situation"></p>
+        <div class="kv" id="state-kv"></div>
+        <div class="thresholds" id="thresholds"></div>
+      </section>
+      <section class="panel" aria-labelledby="signals-heading">
+        <h2 id="signals-heading">Typed signals</h2>
+        <div class="questions" id="questions"></div>
+        <div class="verdict" id="verdict">
+          <p class="status" id="verdict-status"></p>
+          <p class="reason" id="verdict-reason"></p>
+          <div class="kv" id="verdict-kv"></div>
+        </div>
+        <div class="controls">
+          <button type="button" id="prev" class="secondary">Previous</button>
+          <button type="button" id="next">Next step</button>
+        </div>
+      </section>
+    </div>
+    <p class="footnote">
+      Host never executes inside this page. A <code class="mono">ready</code>
+      verdict only means the host may run its own final checks.
+    </p>
+  </div>
+<script>
+const DATA = /* DATA */;
+const root = document;
+const nav = root.getElementById("nav");
+const situation = root.getElementById("situation");
+const stateKv = root.getElementById("state-kv");
+const questions = root.getElementById("questions");
+const verdict = root.getElementById("verdict");
+const verdictStatus = root.getElementById("verdict-status");
+const verdictReason = root.getElementById("verdict-reason");
+const verdictKv = root.getElementById("verdict-kv");
+const thresholds = root.getElementById("thresholds");
+let index = 0;
+
+root.getElementById("title").textContent = DATA.title;
+root.getElementById("note").textContent = DATA.note;
+root.getElementById("meta").innerHTML = [
+  chip(`Path ${DATA.path}`),
+  chip(`${DATA.steps.length} steps`),
+  chip("no torch / no Hub"),
+].join("");
+
+function chip(text) {
+  return `<span class="chip">${escapeHtml(text)}</span>`;
+}
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+function pct(value) {
+  return `${(Number(value) * 100).toFixed(0)}%`;
+}
+function fmt(value) {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "number") return value.toFixed(2);
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+DATA.steps.forEach((step, i) => {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = `${i + 1}. ${step.title}`;
+  button.addEventListener("click", () => show(i));
+  nav.appendChild(button);
+});
+
+thresholds.innerHTML = Object.entries(DATA.thresholds)
+  .map(([key, value]) => `<span>${escapeHtml(key)}=${escapeHtml(fmt(value))}</span>`)
+  .join("");
+
+function renderChoice(question) {
+  const rows = question.options.map((option) => {
+    const selected = !question.abstained && option.name === question.selected;
+    return `<div class="bar-row ${selected ? "selected" : ""}" data-p="${option.probability}">
+      <div><strong>${escapeHtml(option.name)}</strong></div>
+      <div class="track"><div class="fill"></div></div>
+      <div class="pct">${pct(option.probability)}</div>
+    </div>`;
+  }).join("");
+  const confidence = question.confidence == null ? "" : `
+    <div class="meter">
+      <div class="track"><div class="fill" data-p="${question.confidence}"></div></div>
+      <div>confidence ${pct(question.confidence)}${
+        question.min_confidence == null ? "" : ` / min ${pct(question.min_confidence)}`
+      }</div>
+    </div>`;
+  return `<article class="question">
+    <div class="q-head"><span class="q-type">choice · ${escapeHtml(question.id)}</span></div>
+    <p class="q-prompt">${escapeHtml(question.prompt)}</p>
+    <div class="bars">${rows}</div>
+    ${confidence}
+  </article>`;
+}
+
+function renderNoul(question) {
+  const below = !question.passes;
+  const label = below ? "below threshold" : "meets threshold";
+  return `<article class="question">
+    <div class="q-head">
+      <span class="q-type">noul · ${escapeHtml(question.id)}</span>
+      <span class="mono">${label}</span>
+    </div>
+    <p class="q-prompt">${escapeHtml(question.prompt)}</p>
+    <div class="bars">
+      <div class="bar-row ${below ? "fail" : "selected"}" data-p="${question.probability}">
+        <div>P(true)</div>
+        <div class="track"><div class="fill"></div></div>
+        <div class="pct">${pct(question.probability)}</div>
+      </div>
+    </div>
+    <div class="meter">
+      <div></div>
+      <div>threshold ${pct(question.threshold)}</div>
+    </div>
+  </article>`;
+}
+
+function renderScore(question) {
+  const rows = question.levels.map((level) => `
+    <div class="bar-row" data-p="${level.probability}">
+      <div>${escapeHtml(level.name)}</div>
+      <div class="track"><div class="fill"></div></div>
+      <div class="pct">${pct(level.probability)}</div>
+    </div>`).join("");
+  return `<article class="question">
+    <div class="q-head">
+      <span class="q-type">score · ${escapeHtml(question.id)}</span>
+      <span class="mono">E[score]=${fmt(question.score)} / max ${fmt(question.max_allowed)}</span>
+    </div>
+    <p class="q-prompt">${escapeHtml(question.prompt)}</p>
+    <div class="bars">${rows}</div>
+  </article>`;
+}
+
+function renderQuestion(question) {
+  if (question.type === "choice") return renderChoice(question);
+  if (question.type === "noul") return renderNoul(question);
+  if (question.type === "score") return renderScore(question);
+  return "";
+}
+
+function animateBars(scope) {
+  requestAnimationFrame(() => {
+    scope.querySelectorAll("[data-p]").forEach((row) => {
+      const fill = row.querySelector(".fill") || row;
+      const value = Number(row.dataset.p || fill.dataset.p || 0);
+      if (fill.classList.contains("fill")) fill.style.width = `${Math.max(0, Math.min(1, value)) * 100}%`;
+    });
+  });
+}
+
+function show(nextIndex) {
+  index = Math.max(0, Math.min(DATA.steps.length - 1, nextIndex));
+  const step = DATA.steps[index];
+  [...nav.children].forEach((button, i) => {
+    button.setAttribute("aria-current", i === index ? "true" : "false");
+  });
+  situation.textContent = step.state.situation;
+  const proposal = step.state.proposal;
+  stateKv.innerHTML = [
+    ["section", step.section],
+    ["kind", step.kind],
+    ["proposal", proposal ? `${proposal.tool} ${JSON.stringify(proposal.arguments)}` : "—"],
+    ["confirmation", String(step.state.confirmation_given)],
+  ].map(([k, v]) => `<div><span>${escapeHtml(k)}</span><code class="mono">${escapeHtml(v)}</code></div>`).join("");
+
+  questions.innerHTML = step.questions.map(renderQuestion).join("");
+  animateBars(questions);
+
+  verdict.dataset.status = step.verdict.status;
+  verdictStatus.textContent = step.verdict.status;
+  verdictReason.textContent = step.verdict.reason;
+  verdictKv.innerHTML = [
+    ["summary", step.verdict.summary],
+    ["choice p", fmt(step.verdict.choice_probability)],
+    ["choice conf", fmt(step.verdict.choice_confidence)],
+    ["risk", fmt(step.verdict.risk_score)],
+    ["host", step.verdict.host],
+  ].map(([k, v]) => `<div><span>${escapeHtml(k)}</span><code class="mono">${escapeHtml(v)}</code></div>`).join("");
+}
+
+root.getElementById("prev").addEventListener("click", () => show(index - 1));
+root.getElementById("next").addEventListener("click", () => show(index + 1));
+addEventListener("keydown", (event) => {
+  if (event.key === "ArrowRight") show(index + 1);
+  if (event.key === "ArrowLeft") show(index - 1);
+});
+show(0);
+</script>
+</body>
+</html>

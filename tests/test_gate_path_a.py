@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
+import sys
 from pathlib import Path
 
 import pytest
@@ -319,19 +321,33 @@ def test_path_a_import_works_without_torch_installed():
 
 def test_usage_demo_path_a_scenarios():
     """First-run demo must stay torch-free and assert ready/blocked/abstain."""
-    import runpy
+    usage_dir = Path(__file__).resolve().parents[1] / "examples" / "usage"
+    sys.path.insert(0, str(usage_dir))
+    try:
+        usage_trace = importlib.import_module("decision_trace")
+        usage_visual = importlib.import_module("visual_demo")
+        usage_trace = importlib.reload(usage_trace)
+        usage_visual = importlib.reload(usage_visual)
+        trace = usage_trace.build_trace()
+        html = usage_visual.render_html(trace)
+    finally:
+        sys.path.pop(0)
+        for name in ("decision_trace", "visual_demo"):
+            sys.modules.pop(name, None)
 
-    demo_path = Path(__file__).resolve().parents[1] / "examples" / "usage" / "demo.py"
-    ns = runpy.run_path(str(demo_path))
-    gate_rows = ns["run_tool_gate"]()
-    assert [title for title, _ in gate_rows] == [
+    assert trace["path"] == "A"
+    statuses = [step["verdict"]["status"] for step in trace["steps"]]
+    assert statuses[:3] == ["ready", "blocked", "abstain"]
+    assert [step["title"] for step in trace["steps"][:3]] == [
         "Safe read",
         "Delete without confirmation",
-        "Ambiguous broadcast (split choice mass)",
+        "Ambiguous broadcast",
     ]
-    assert "ready" in gate_rows[0][1].lower()
-    assert "blocked" in gate_rows[1][1].lower()
-    assert "abstain" in gate_rows[2][1].lower()
-    triage = ns["run_ticket_router"]()
-    assert "route → refund" in triage[0][1]
-    assert "abstain" in triage[1][1]
+    ticket_steps = [step for step in trace["steps"] if step["kind"] == "ticket"]
+    assert ticket_steps[0]["verdict"]["status"] == "ready"
+    assert "refund" in ticket_steps[0]["verdict"]["host"]
+    assert ticket_steps[1]["verdict"]["status"] == "abstain"
+    assert '"status":"ready"' in html
+    assert '"status":"blocked"' in html
+    assert '"status":"abstain"' in html
+    assert "probability" in html

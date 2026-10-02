@@ -19,10 +19,10 @@ No torch, no Hub download, no side effects. From a repository checkout:
 ```sh
 uv venv && source .venv/bin/activate
 uv pip install -e '.[dev]'
-python examples/usage/demo.py
+python examples/usage/visual_demo.py --open
 ```
 
-You should see a **ready** safe read, a **blocked** delete without confirmation, an **abstain** on an ambiguous mail proposal, then a ticket-router Choice menu with abstain-on-low-confidence. Details: [examples/usage](examples/usage/README.md). Deeper gate / host / Path B: [examples/gate](examples/gate/README.md) and [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md).
+This writes a browser page (`examples/usage/out/demo.html`) that steps through **state → typed signals → probability bars → ready / abstain / blocked** rationale (tool gate, then ticket-router abstain). Text-only fallback: `python examples/usage/demo.py`. Details: [examples/usage](examples/usage/README.md). Deeper gate / host / Path B: [examples/gate](examples/gate/README.md) and [docs/using-the-tool-gate.md](docs/using-the-tool-gate.md).
 
 ## Vision film demo
 

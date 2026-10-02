@@ -11,7 +11,7 @@ already exist in this repository.
 | Use case | Typical questions | Start here |
 |----------|-------------------|------------|
 | Tool authorization gate | choice + score + noul → `ready`/`abstain`/`blocked` | [using-the-tool-gate.md](using-the-tool-gate.md) · [examples/usage](../examples/usage/README.md) |
-| Support / ticket triage | one `choice` (+ abstain) | [§ Support triage](#1-support--ticket-triage) · Path A shape in [examples/usage/demo.py](../examples/usage/demo.py) |
+| Support / ticket triage | one `choice` (+ abstain) | [§ Support triage](#1-support--ticket-triage) · Path A shape in [examples/usage](../examples/usage/README.md) (`visual_demo.py` / `demo.py`) |
 | Agent / OS action routing | one `choice` over OS actions | [§ OS action menu](#2-agent--os-action-menu) |
 | Risk + auth checklist | `choice` + `score` + several `noul` | [§ Multi-signal checklist](#3-multi-signal-checklist) |
 | High-stakes abstention | ensemble of choice scorers | [§ Ensemble abstention](#4-high-stakes-ensemble-abstention) |
