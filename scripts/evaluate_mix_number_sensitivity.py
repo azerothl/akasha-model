@@ -481,6 +481,12 @@ def main() -> None:
             f"gpu={device_meta['gpu_name']} "
             f"({device_meta['gpu_memory_total_mb']} MiB total)"
         )
+    else:
+        # Always record GPU status so CPU CI smoke tests can assert on it.
+        device_notes.append(
+            "GPU not detected for this run; CUDA 16GB measurements live in "
+            "reports/mix_number_sensitivity_cuda.json when published."
+        )
     device_notes.append(
         "Values published as measured — no pass/fail threshold in this protocol."
     )
