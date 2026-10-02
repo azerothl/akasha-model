@@ -84,7 +84,7 @@ from .mix_proposal import (
 )
 from .offline import MODEL_ABSENT_STATUS, ModelAbsentError, resolve_local_checkpoint
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 # Symbols that require the optional torch stack. Resolved via __getattr__.
 _TORCH_EXPORTS = {
