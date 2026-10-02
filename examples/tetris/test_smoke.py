@@ -37,7 +37,10 @@ def test_enumerate_and_verify_roundtrip(tetris_mods):
     assert len(placements) >= 2
     ids = {item.placement_id for item in placements}
     assert len(ids) == len(placements)
-    result = scorer.score_placements(placements)
+    # Human-readable lock labels (not opaque p0/p1…).
+    assert all("rot=" in item.placement_id and "col=" in item.placement_id for item in placements)
+    assert all(item.placement_id.startswith("T ") for item in placements)
+    result = scorer.score_placements(placements, board=board, next_piece="I")
     assert isinstance(result.selected, str)
     assert result.selected in ids
     verified = engine.verify_placement(board, "T", result.selected, placements)
@@ -52,7 +55,7 @@ def test_host_rejects_unknown_id(tetris_mods):
     engine, _scorer, _play = tetris_mods
     board = engine.empty_board()
     placements = engine.enumerate_placements(board, "O")
-    bad = engine.verify_placement(board, "O", "p999", placements)
+    bad = engine.verify_placement(board, "O", "O rot=0 col=99", placements)
     assert not bad.ok
     assert "unknown" in bad.reason
 
@@ -61,11 +64,31 @@ def test_choice_question_matches_ids(tetris_mods):
     engine, scorer, _play = tetris_mods
     board = engine.empty_board()
     placements = engine.enumerate_placements(board, "I")
-    question = scorer.build_choice_question(placements)
+    question = scorer.build_choice_question(placements, next_piece="O")
     assert isinstance(question, ChoiceQuestion)
     assert {opt.name for opt in question.options} == {
         item.placement_id for item in placements
     }
+    assert "Next piece in preview: O" in question.instructions
+
+
+def test_seven_bag_peek_matches_next(tetris_mods):
+    engine, _scorer, _play = tetris_mods
+    bag = engine.SevenBag(seed=11)
+    upcoming = bag.peek()
+    assert upcoming in engine.BAG_ORDER
+    assert bag.next_piece() == upcoming
+    assert bag.peek() in engine.BAG_ORDER
+
+
+def test_next_piece_changes_scores(tetris_mods):
+    engine, scorer, _play = tetris_mods
+    board = engine.empty_board()
+    placements = engine.enumerate_placements(board, "T")
+    plain = scorer.effective_scores(placements, board, next_piece=None)
+    with_i = scorer.effective_scores(placements, board, next_piece="I")
+    assert len(plain) == len(with_i)
+    assert plain != with_i
 
 
 def test_gravity_and_level_accelerate(tetris_mods):
@@ -91,7 +114,7 @@ def test_plan_approach_shows_falling_rows(tetris_mods):
     engine, scorer, _play = tetris_mods
     board = engine.empty_board()
     placements = engine.enumerate_placements(board, "O")
-    result = scorer.score_placements(placements)
+    result = scorer.score_placements(placements, board=board, next_piece="I")
     target = next(item for item in placements if item.placement_id == result.selected)
     path = engine.plan_approach(board, "O", target)
     assert len(path) >= 2
@@ -106,23 +129,52 @@ def test_play_trace_and_html(tetris_mods):
     assert trace["path"] == "A"
     assert trace["scorer"] == "path_a_heuristic"
     assert trace["mode"] == "realtime_gravity"
+    assert trace["pieces_requested"] == 6
+    assert trace["sample_locks"] is True
     assert len(trace["steps"]) >= 1
     locked = [step for step in trace["steps"] if step["host"]["status"] == "locked"]
     assert locked
     for step in locked:
         assert step["choice"]["selected"]
+        assert "rot=" in step["choice"]["selected"]
+        assert step["choice"]["sampled"] is True
         assert step["host"]["verified"] is True
         assert "probabilities" in step["choice"]
+        assert step.get("next_piece") in {"I", "O", "T", "S", "Z", "J", "L"}
         assert len(step["candidates"]) >= 2
         kinds = [frame["kind"] for frame in step["frames"]]
         assert "fall" in kinds
         assert "lock" in kinds
         assert step["drop_ms"] >= 1
+        assert any(frame.get("next_piece") for frame in step["frames"])
     assert "final_level" in trace
     assert trace["final_score"] > 0
     assert trace["final_drop_ms"] < 800
+    assert "label_legend" in trace
     html = play.render_html(trace)
     assert "path_a_heuristic" in html
     assert '"status":"locked"' in html or '"status": "locked"' in html
     assert "realtime_gravity" in html
     assert "Gravity" in html or "fall" in html.lower()
+    assert "Placement probabilities" in html
+    assert "next-grid" in html
+    assert "rot=" in html
+
+
+def test_default_runs_until_game_over_or_safety(tetris_mods):
+    _engine, _scorer, play = tetris_mods
+    trace = play.run_game(seed=1, safety_max_pieces=12)
+    assert trace["pieces_requested"] is None
+    assert trace["stop_reason"] in {"game_over", "safety_cap"}
+    assert len(trace["steps"]) >= 1
+    assert len(trace["steps"]) <= 12
+
+
+def test_sampling_can_reach_game_over(tetris_mods):
+    _engine, _scorer, play = tetris_mods
+    # High temperature + sampling should eventually stack out within the cap.
+    trace = play.run_game(seed=2, temperature=14.0, safety_max_pieces=80, sample=True)
+    assert trace["stop_reason"] in {"game_over", "safety_cap"}
+    assert len(trace["steps"]) >= 1
+    if trace["game_over"]:
+        assert trace["steps"][-1]["host"]["status"] == "blocked"

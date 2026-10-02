@@ -53,6 +53,9 @@ jobs:
           grep -q 'realtime_gravity' examples/tetris/out/demo.html
           grep -q '"status":"locked"' examples/tetris/out/demo.html
           grep -q '"kind":"fall"' examples/tetris/out/demo.html
+          grep -q 'Placement probabilities' examples/tetris/out/demo.html
+          grep -q 'rot=' examples/tetris/out/demo.html
+          grep -q 'next_piece' examples/tetris/out/demo.html
 
   core:
     name: core
@@ -93,6 +96,9 @@ jobs:
           grep -q 'path_a_heuristic' examples/tetris/out/demo.html
           grep -q 'realtime_gravity' examples/tetris/out/demo.html
           grep -q '"kind":"fall"' examples/tetris/out/demo.html
+          grep -q 'Placement probabilities' examples/tetris/out/demo.html
+          grep -q 'rot=' examples/tetris/out/demo.html
+          grep -q 'next_piece' examples/tetris/out/demo.html
 
       - name: Gate demo (no side effects)
         run: .venv/bin/python examples/gate/demo.py
