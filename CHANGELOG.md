@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Weight/data licence dossier (`docs/licences-poids.md`) for shipped checkpoints
   and base encoders; Gabriel review marked pending before commercial delivery
   (#60).
+- Offline Path B helpers (`akasha_model.offline`): local `.pt` load with
+  network denial, clear model-absent status; ONNX/GGUF export deferred until a
+  mix MASK checkpoint exists (#62).
 
 ### Docs
 

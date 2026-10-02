@@ -82,6 +82,7 @@ from .mix_proposal import (
     build_mix_audit_envelope,
     build_mix_proposal_batch,
 )
+from .offline import MODEL_ABSENT_STATUS, ModelAbsentError, resolve_local_checkpoint
 
 __version__ = "0.2.0"
 
@@ -112,8 +113,8 @@ __all__ = [
     "DEFAULT_MIN_CHOICE_PROBABILITY", "DEFAULT_NOUL_THRESHOLD",
     "AuthorityProfile", "CatalogPolicy", "DecisionModel", "MultiQuestionCollator",
     "MultiQuestionDataset", "MultiQuestionTinyScorer", "GateOutcomeRecord",
-    "GateSignals", "HostOutcome", "MIX_SCHEMA_VERSION", "MixChange",
-    "MixPresetCatalog", "MixProposalBatch",
+    "GateSignals", "HostOutcome", "MIX_SCHEMA_VERSION", "MODEL_ABSENT_STATUS",
+    "MixChange", "MixPresetCatalog", "MixProposalBatch", "ModelAbsentError",
     "MixSessionState", "MixSettingsProposal",
     "PairMasking", "ToolHost", "ToolProposal", "ToolCallPlan",
     "ToolCallPlanner", "ToolSpec", "TrackDescriptors", "append_outcome",
@@ -126,6 +127,7 @@ __all__ = [
     "outcome_to_dict", "plan_from_dict", "plan_scored_proposal", "plan_to_dict",
     "propose_mix_settings",
     "record_from_host_outcome", "request_from_dict", "request_to_dict",
+    "resolve_local_checkpoint",
     "run_gated_call", "run_scored_gated_call", "schema_path", "score_proposal",
     "suggest_threshold_updates", "summarize_outcomes", "validate_mix_state",
     "validate_tool_arguments",
