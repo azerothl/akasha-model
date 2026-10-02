@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Akasha Model — Tetris Choice demo</title>
+<style>
+:root {
+  --bg: #f3efe6;
+  --ink: #1c1a16;
+  --muted: #5c564c;
+  --panel: rgba(255, 252, 246, 0.88);
+  --line: rgba(28, 26, 22, 0.12);
+  --ready: #1f7a4c;
+  --ready-fill: #2f9e64;
+  --reject: #9b2c2c;
+  --accent: #0d6e6e;
+  --ghost: rgba(13, 110, 110, 0.35);
+  --bar-track: rgba(28, 26, 22, 0.08);
+  --shadow: 0 18px 40px rgba(28, 26, 22, 0.08);
+  --cell: 18px;
+  --I: #2aa8a8;
+  --O: #c9a227;
+  --T: #7a5cff;
+  --S: #2f9e64;
+  --Z: #c43a3a;
+  --J: #3b6fd8;
+  --L: #d97706;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  min-height: 100%;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(13, 110, 110, 0.14), transparent 32%),
+    radial-gradient(circle at 90% 8%, rgba(42, 168, 168, 0.10), transparent 28%),
+    linear-gradient(160deg, #efe8da 0%, #f6f2ea 48%, #e7efe9 100%);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+}
+body { padding: 28px 18px 64px; }
+.shell { width: min(1120px, 100%); margin: 0 auto; }
+.brand {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin: 0;
+}
+.lede {
+  margin: 8px 0 0;
+  max-width: 46rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+.layout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  margin-top: 20px;
+}
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.board-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(10, var(--cell));
+  grid-template-rows: repeat(20, var(--cell));
+  gap: 1px;
+  padding: 6px;
+  background: #1c1a16;
+  border: 1px solid var(--line);
+}
+.cell {
+  width: var(--cell);
+  height: var(--cell);
+  background: #2a2722;
+  transition: background 220ms ease, box-shadow 220ms ease;
+}
+.cell.filled { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
+.cell.ghost {
+  background: var(--ghost);
+  box-shadow: inset 0 0 0 1px rgba(13, 110, 110, 0.55);
+}
+.cell.I { background: var(--I); }
+.cell.O { background: var(--O); }
+.cell.T { background: var(--T); }
+.cell.S { background: var(--S); }
+.cell.Z { background: var(--Z); }
+.cell.J { background: var(--J); }
+.cell.L { background: var(--L); }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(4rem, 1fr));
+  gap: 8px;
+  width: 100%;
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.82rem;
+}
+.stats div {
+  border: 1px solid var(--line);
+  padding: 8px;
+  background: rgba(255,255,255,0.5);
+}
+.stats strong {
+  display: block;
+  font-size: 1.1rem;
+  margin-top: 2px;
+}
+.loop {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.86rem;
+}
+.loop ol {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+}
+.loop li[data-active="true"] {
+  color: var(--ink);
+  font-weight: 600;
+}
+.bars { display: grid; gap: 8px; max-height: 280px; overflow: auto; }
+.bar-row {
+  display: grid;
+  grid-template-columns: minmax(3.2rem, 4rem) 1fr 3.2rem;
+  gap: 8px;
+  align-items: center;
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.86rem;
+}
+.track {
+  height: 12px;
+  background: var(--bar-track);
+  overflow: hidden;
+}
+.fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 420ms cubic-bezier(.2,.8,.2,1);
+}
+.bar-row.selected .fill { background: var(--ready-fill); }
+.pct {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.verdict {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: #fffdf8;
+}
+.verdict[data-status="locked"] { border-left: 5px solid var(--ready); }
+.verdict[data-status="rejected"],
+.verdict[data-status="blocked"] { border-left: 5px solid var(--reject); }
+.status {
+  margin: 0 0 6px;
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.verdict[data-status="locked"] .status { color: var(--ready); }
+.verdict[data-status="rejected"] .status,
+.verdict[data-status="blocked"] .status { color: var(--reject); }
+.reason { margin: 0 0 8px; font-size: 1.1rem; line-height: 1.35; }
+.kv {
+  display: grid;
+  gap: 6px;
+  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+  font-size: 0.86rem;
+}
+.kv div {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.mono {
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.84rem;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.controls button {
+  appearance: none;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #f7f3ea;
+  padding: 10px 14px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.95rem;
+}
+.controls button.secondary {
+  background: transparent;
+  color: var(--ink);
+}
+.footnote {
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+</style>
+<body>
+  <div class="shell">
+    <header>
+      <p class="brand" id="title">Akasha Model</p>
+      <p class="lede" id="note"></p>
+      <div class="meta" id="meta"></div>
+    </header>
+    <div class="layout">
+      <section class="panel board-wrap" aria-labelledby="board-heading">
+        <h2 id="board-heading">Board</h2>
+        <div class="board" id="board" aria-label="Tetris board"></div>
+        <div class="stats">
+          <div>Piece<strong id="stat-piece">—</strong></div>
+          <div>Score<strong id="stat-score">0</strong></div>
+          <div>Lines<strong id="stat-lines">0</strong></div>
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="decision-heading">
+        <h2 id="decision-heading">Typed Choice loop</h2>
+        <div class="loop">
+          <ol>
+            <li data-phase="enumerate">1. Engine enumerates legal placements</li>
+            <li data-phase="choice">2. Choice over placement IDs + probabilities</li>
+            <li data-phase="verify">3. Host verifies ID / cells before lock</li>
+          </ol>
+        </div>
+        <div class="bars" id="bars" aria-label="Placement probabilities"></div>
+        <div class="verdict" id="verdict" data-status="locked">
+          <p class="status" id="verdict-status"></p>
+          <p class="reason" id="verdict-reason"></p>
+          <div class="kv" id="verdict-kv"></div>
+        </div>
+        <div class="controls">
+          <button type="button" id="prev" class="secondary">Previous</button>
+          <button type="button" id="play">Play</button>
+          <button type="button" id="next">Next lock</button>
+        </div>
+      </section>
+    </div>
+    <p class="footnote">
+      Path A heuristic softmax only — no torch / Hub. The model never invents
+      coordinates: it picks among engine-enumerated IDs, and the host re-checks
+      exact cells before locking.
+    </p>
+  </div>
+<script>
+const DATA = /* DATA */;
+const boardEl = document.getElementById("board");
+const barsEl = document.getElementById("bars");
+const verdict = document.getElementById("verdict");
+const phaseItems = [...document.querySelectorAll(".loop li")];
+let index = 0;
+let timer = null;
+
+function chip(text) {
+  const el = document.createElement("span");
+  el.className = "chip";
+  el.textContent = text;
+  return el;
+}
+
+function initMeta() {
+  document.getElementById("title").textContent = DATA.title || "Akasha Model";
+  document.getElementById("note").textContent = DATA.note || "";
+  const meta = document.getElementById("meta");
+  meta.replaceChildren(
+    chip(`path ${DATA.path}`),
+    chip(DATA.scorer || "heuristic"),
+    chip(`${DATA.steps.length} locks`),
+    chip(`seed ${DATA.seed}`),
+    chip(`score ${DATA.final_score}`),
+  );
+  boardEl.replaceChildren();
+  for (let i = 0; i < 200; i++) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    boardEl.appendChild(cell);
+  }
+}
+
+function paintBoard(rows, ghostCells) {
+  const cells = boardEl.children;
+  const ghost = new Set((ghostCells || []).map(([c, r]) => `${c},${r}`));
+  for (let r = 0; r < 20; r++) {
+    const row = rows[r] || ".".repeat(10);
+    for (let c = 0; c < 10; c++) {
+      const el = cells[r * 10 + c];
+      const ch = row[c] || ".";
+      el.className = "cell";
+      if (ch !== ".") {
+        el.classList.add("filled", ch);
+      } else if (ghost.has(`${c},${r}`)) {
+        el.classList.add("ghost");
+      }
+    }
+  }
+}
+
+function setPhase(name) {
+  for (const item of phaseItems) {
+    item.dataset.active = item.dataset.phase === name ? "true" : "false";
+  }
+}
+
+function render(i) {
+  const step = DATA.steps[i];
+  if (!step) return;
+  index = i;
+  const host = step.host || {};
+  const choice = step.choice || {};
+  const selected = choice.selected;
+  const placement = (host.placement) ||
+    (step.candidates || []).find((c) => c.id === selected);
+  const ghost = placement ? placement.occupied_cells : [];
+  paintBoard(step.board_before, ghost);
+  document.getElementById("stat-piece").textContent = step.piece;
+  document.getElementById("stat-score").textContent = String(step.score);
+  document.getElementById("stat-lines").textContent = String(step.lines_total);
+
+  const probs = choice.probabilities || {};
+  barsEl.replaceChildren();
+  const entries = Object.entries(probs);
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "reason";
+    empty.textContent = "No Choice — fewer than two legal placements.";
+    barsEl.appendChild(empty);
+    setPhase("enumerate");
+  } else {
+    setPhase("choice");
+    for (const [name, value] of entries) {
+      const row = document.createElement("div");
+      row.className = "bar-row" + (name === selected ? " selected" : "");
+      const label = document.createElement("code");
+      label.className = "mono";
+      label.textContent = name;
+      const track = document.createElement("div");
+      track.className = "track";
+      const fill = document.createElement("div");
+      fill.className = "fill";
+      track.appendChild(fill);
+      const pct = document.createElement("span");
+      pct.className = "pct";
+      pct.textContent = `${Math.round(value * 1000) / 10}%`;
+      row.append(label, track, pct);
+      barsEl.appendChild(row);
+      requestAnimationFrame(() => {
+        fill.style.width = `${Math.max(2, value * 100)}%`;
+      });
+    }
+  }
+
+  const status = host.status || "locked";
+  verdict.dataset.status = status;
+  document.getElementById("verdict-status").textContent = status;
+  document.getElementById("verdict-reason").textContent = host.reason || "";
+  const kv = document.getElementById("verdict-kv");
+  kv.replaceChildren();
+  const rows = [
+    ["step", `${i + 1} / ${DATA.steps.length}`],
+    ["candidates", String((step.candidates || []).length)],
+    ["selected", selected || "—"],
+    ["confidence", choice.confidence != null ? choice.confidence.toFixed(3) : "—"],
+    ["verified", host.verified ? "yes" : "no"],
+  ];
+  if (placement) {
+    rows.push(
+      ["rotation", placement.rotation],
+      ["column", String(placement.column)],
+      ["landing row", String(placement.landing_row)],
+      ["cells", JSON.stringify(placement.occupied_cells)],
+    );
+  }
+  if (host.lines_cleared != null) {
+    rows.push(["lines cleared", String(host.lines_cleared)]);
+  }
+  for (const [k, v] of rows) {
+    const div = document.createElement("div");
+    const key = document.createElement("span");
+    key.textContent = k;
+    const val = document.createElement("code");
+    val.className = "mono";
+    val.textContent = v;
+    div.append(key, val);
+    kv.appendChild(div);
+  }
+  if (host.verified) setPhase("verify");
+  // After a short beat, show the locked board.
+  if (host.verified && step.board_after) {
+    window.setTimeout(() => {
+      if (index === i) paintBoard(step.board_after, []);
+    }, 520);
+  }
+}
+
+function stopPlay() {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+  document.getElementById("play").textContent = "Play";
+}
+
+function togglePlay() {
+  if (timer) {
+    stopPlay();
+    return;
+  }
+  document.getElementById("play").textContent = "Pause";
+  timer = setInterval(() => {
+    if (index >= DATA.steps.length - 1) {
+      stopPlay();
+      return;
+    }
+    render(index + 1);
+  }, 1400);
+}
+
+initMeta();
+render(0);
+document.getElementById("prev").onclick = () => {
+  stopPlay();
+  render(Math.max(0, index - 1));
+};
+document.getElementById("next").onclick = () => {
+  stopPlay();
+  render(Math.min(DATA.steps.length - 1, index + 1));
+};
+document.getElementById("play").onclick = togglePlay;
+</script>
+</body>
+</html>
