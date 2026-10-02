@@ -75,6 +75,7 @@ from .mix import (
     TrackDescriptors,
     validate_mix_state,
 )
+from .mix_presets import MixPresetCatalog, MixSettingsProposal, propose_mix_settings
 
 __version__ = "0.2.0"
 
@@ -105,7 +106,8 @@ __all__ = [
     "DEFAULT_MIN_CHOICE_PROBABILITY", "DEFAULT_NOUL_THRESHOLD",
     "AuthorityProfile", "CatalogPolicy", "DecisionModel", "MultiQuestionCollator",
     "MultiQuestionDataset", "MultiQuestionTinyScorer", "GateOutcomeRecord",
-    "GateSignals", "HostOutcome", "MIX_SCHEMA_VERSION", "MixSessionState",
+    "GateSignals", "HostOutcome", "MIX_SCHEMA_VERSION", "MixPresetCatalog",
+    "MixSessionState", "MixSettingsProposal",
     "PairMasking", "ToolHost", "ToolProposal", "ToolCallPlan",
     "ToolCallPlanner", "ToolSpec", "TrackDescriptors", "append_outcome",
     "build_audit_envelope",
@@ -115,6 +117,7 @@ __all__ = [
     "grpo_loss",
     "load_decision_checkpoint", "load_outcomes", "outcome_from_dict",
     "outcome_to_dict", "plan_from_dict", "plan_scored_proposal", "plan_to_dict",
+    "propose_mix_settings",
     "record_from_host_outcome", "request_from_dict", "request_to_dict",
     "run_gated_call", "run_scored_gated_call", "schema_path", "score_proposal",
     "suggest_threshold_updates", "summarize_outcomes", "validate_mix_state",

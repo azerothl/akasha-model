@@ -6,7 +6,9 @@ stored here — only JSON descriptors and typed questions.
 | File | Role |
 |------|------|
 | [`sample_questions.jsonl`](sample_questions.jsonl) | One multitask row: Choice preset, Score gain/pan, Noul masking |
+| [`presets.v1.json`](presets.v1.json) | Versioned MixPresetCatalog (levels → dB / pan / EQ / compressor) |
 | Contract | [`docs/contracts/mix-descriptors.md`](../../docs/contracts/mix-descriptors.md) |
+| Presets | [`docs/contracts/mix-presets.md`](../../docs/contracts/mix-presets.md) |
 
 ```python
 from pathlib import Path
