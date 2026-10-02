@@ -369,15 +369,16 @@ function renderChoice(question) {
 }
 
 function renderNoul(question) {
-  const fail = !question.passes;
+  const below = !question.passes;
+  const label = below ? "below threshold" : "meets threshold";
   return `<article class="question">
     <div class="q-head">
       <span class="q-type">noul · ${escapeHtml(question.id)}</span>
-      <span class="mono">${question.passes ? "pass" : "fail"}</span>
+      <span class="mono">${label}</span>
     </div>
     <p class="q-prompt">${escapeHtml(question.prompt)}</p>
     <div class="bars">
-      <div class="bar-row ${fail ? "fail" : "selected"}" data-p="${question.probability}">
+      <div class="bar-row ${below ? "fail" : "selected"}" data-p="${question.probability}">
         <div>P(true)</div>
         <div class="track"><div class="fill"></div></div>
         <div class="pct">${pct(question.probability)}</div>
