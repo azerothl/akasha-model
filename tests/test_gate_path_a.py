@@ -32,11 +32,12 @@ from akasha_model.primitives import ChoiceQuestion, OptionSpec, choice_result
 def test_path_a_modules_have_no_torch_import() -> None:
     import akasha_model.gate as gate
     import akasha_model.host as host
+    import akasha_model.mix as mix
     import akasha_model.outcomes as outcomes
     import akasha_model.tool_calling as tool_calling
     import akasha_model.primitives as primitives
 
-    for module in (gate, host, outcomes, tool_calling, primitives):
+    for module in (gate, host, mix, outcomes, tool_calling, primitives):
         source = Path(module.__file__).read_text(encoding="utf-8")
         assert "import torch" not in source
         assert "from torch" not in source

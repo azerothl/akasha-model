@@ -68,6 +68,13 @@ from .wire import (
     request_to_dict,
     schema_path,
 )
+from .mix import (
+    MIX_SCHEMA_VERSION,
+    MixSessionState,
+    PairMasking,
+    TrackDescriptors,
+    validate_mix_state,
+)
 
 __version__ = "0.2.0"
 
@@ -98,8 +105,10 @@ __all__ = [
     "DEFAULT_MIN_CHOICE_PROBABILITY", "DEFAULT_NOUL_THRESHOLD",
     "AuthorityProfile", "CatalogPolicy", "DecisionModel", "MultiQuestionCollator",
     "MultiQuestionDataset", "MultiQuestionTinyScorer", "GateOutcomeRecord",
-    "GateSignals", "HostOutcome", "ToolHost", "ToolProposal", "ToolCallPlan",
-    "ToolCallPlanner", "ToolSpec", "append_outcome", "build_audit_envelope",
+    "GateSignals", "HostOutcome", "MIX_SCHEMA_VERSION", "MixSessionState",
+    "PairMasking", "ToolHost", "ToolProposal", "ToolCallPlan",
+    "ToolCallPlanner", "ToolSpec", "TrackDescriptors", "append_outcome",
+    "build_audit_envelope",
     "check_catalog_policy", "content_hash", "convert_typed_row",
     "default_gate_planner", "describe_outcome", "describe_plan",
     "dispatch_plan", "envelope_from_dict", "envelope_to_dict", "evaluate_gate",
@@ -108,7 +117,8 @@ __all__ = [
     "outcome_to_dict", "plan_from_dict", "plan_scored_proposal", "plan_to_dict",
     "record_from_host_outcome", "request_from_dict", "request_to_dict",
     "run_gated_call", "run_scored_gated_call", "schema_path", "score_proposal",
-    "suggest_threshold_updates", "summarize_outcomes", "validate_tool_arguments",
+    "suggest_threshold_updates", "summarize_outcomes", "validate_mix_state",
+    "validate_tool_arguments",
     "verify_envelope",
 ]
 

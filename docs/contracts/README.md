@@ -9,7 +9,8 @@ bridge into Path A without scraping Python dataclasses.
 | Plan response | [`akasha_model/schemas/tool-call-plan.schema.json`](../../akasha_model/schemas/tool-call-plan.schema.json) |
 | Host outcome | [`akasha_model/schemas/host-outcome.schema.json`](../../akasha_model/schemas/host-outcome.schema.json) |
 | Audit envelope | [`akasha_model/schemas/gate-audit-envelope.schema.json`](../../akasha_model/schemas/gate-audit-envelope.schema.json) |
-| Python helpers | `akasha_model.wire` + `akasha_model.audit` |
+| Mix descriptors | [`mix-descriptors.md`](mix-descriptors.md) · [`akasha_model/schemas/mix-descriptors.schema.json`](../../akasha_model/schemas/mix-descriptors.schema.json) |
+| Python helpers | `akasha_model.wire` + `akasha_model.audit` (+ `akasha_model.mix` for descriptors) |
 | Golden fixtures | [`tests/contracts/fixtures/`](../../tests/contracts/fixtures/) |
 
 Current `contract_version` / `CONTRACT_VERSION`: **1**.
