@@ -171,10 +171,11 @@ def test_play_trace_and_html(tetris_mods):
     assert "sampled ≠ argmax" in html
     assert "sample-note" in html
     assert "sampled locks" in html or "sample_locks" in html
-    assert "seed 3 (fixed)" in html
+    assert '"seed":3' in html or '"seed": 3' in html
+    assert '"seed_source":"fixed"' in html or '"seed_source": "fixed"' in html
     assert "rng-hud" in html
     assert "not random X" in html
-    assert "this run" in html or "seed_source" in html
+    assert "this run" in html
 
 
 def test_sampling_can_differ_from_argmax(tetris_mods):
