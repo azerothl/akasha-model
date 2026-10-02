@@ -2,29 +2,30 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Akasha Model — Tetris Choice demo</title>
+<title>Akasha Model — Tetris</title>
 <style>
 :root {
-  --bg: #f3efe6;
-  --ink: #1c1a16;
-  --muted: #5c564c;
-  --panel: rgba(255, 252, 246, 0.88);
-  --line: rgba(28, 26, 22, 0.12);
-  --ready: #1f7a4c;
-  --ready-fill: #2f9e64;
-  --reject: #9b2c2c;
-  --accent: #0d6e6e;
-  --ghost: rgba(13, 110, 110, 0.35);
-  --bar-track: rgba(28, 26, 22, 0.08);
-  --shadow: 0 18px 40px rgba(28, 26, 22, 0.08);
-  --cell: 18px;
-  --I: #2aa8a8;
-  --O: #c9a227;
-  --T: #7a5cff;
-  --S: #2f9e64;
-  --Z: #c43a3a;
-  --J: #3b6fd8;
-  --L: #d97706;
+  --bg0: #0e1418;
+  --bg1: #152028;
+  --ink: #e7eef2;
+  --muted: #8fa3ad;
+  --panel: rgba(18, 28, 34, 0.92);
+  --line: rgba(231, 238, 242, 0.12);
+  --ready: #3dba7a;
+  --ready-fill: #45c985;
+  --reject: #e35d5d;
+  --accent: #3cb8c7;
+  --ghost: rgba(60, 184, 199, 0.28);
+  --bar-track: rgba(231, 238, 242, 0.08);
+  --shadow: 0 22px 48px rgba(0, 0, 0, 0.35);
+  --cell: 20px;
+  --I: #3cb8c7;
+  --O: #e0b84a;
+  --T: #9a7bff;
+  --S: #45c985;
+  --Z: #e35d5d;
+  --J: #4d7fe8;
+  --L: #e8913a;
 }
 * { box-sizing: border-box; }
 html, body {
@@ -32,47 +33,50 @@ html, body {
   min-height: 100%;
   color: var(--ink);
   background:
-    radial-gradient(circle at 10% 0%, rgba(13, 110, 110, 0.14), transparent 32%),
-    radial-gradient(circle at 90% 8%, rgba(42, 168, 168, 0.10), transparent 28%),
-    linear-gradient(160deg, #efe8da 0%, #f6f2ea 48%, #e7efe9 100%);
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    radial-gradient(circle at 12% 0%, rgba(60, 184, 199, 0.16), transparent 34%),
+    radial-gradient(circle at 88% 10%, rgba(69, 201, 133, 0.10), transparent 30%),
+    linear-gradient(165deg, var(--bg0) 0%, var(--bg1) 55%, #10181e 100%);
+  font-family: "Avenir Next", Avenir, "Segoe UI", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-body { padding: 28px 18px 64px; }
+body { padding: 24px 16px 56px; }
 .shell { width: min(1120px, 100%); margin: 0 auto; }
 .brand {
-  font-size: clamp(2rem, 4vw, 2.8rem);
-  letter-spacing: -0.03em;
-  line-height: 1.05;
+  font-family: "Futura", "Avenir Next", Avenir, sans-serif;
+  font-size: clamp(2rem, 4.2vw, 2.9rem);
+  letter-spacing: -0.04em;
+  line-height: 1.02;
   margin: 0;
 }
 .lede {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   max-width: 46rem;
   color: var(--muted);
-  font-size: 1.05rem;
+  font-size: 1.02rem;
+  line-height: 1.45;
 }
 .meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 .chip {
   display: inline-flex;
   align-items: center;
   padding: 6px 10px;
   border: 1px solid var(--line);
-  background: var(--panel);
-  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
-  font-size: 0.78rem;
-  letter-spacing: 0.02em;
+  background: rgba(255,255,255,0.03);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .layout {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 16px;
-  margin-top: 20px;
+  margin-top: 22px;
 }
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
@@ -85,9 +89,8 @@ body { padding: 28px 18px 64px; }
 }
 .panel h2 {
   margin: 0 0 12px;
-  font-size: 0.78rem;
-  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
-  letter-spacing: 0.12em;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
   font-weight: 600;
@@ -103,20 +106,24 @@ body { padding: 28px 18px 64px; }
   grid-template-columns: repeat(10, var(--cell));
   grid-template-rows: repeat(20, var(--cell));
   gap: 1px;
-  padding: 6px;
-  background: #1c1a16;
+  padding: 7px;
+  background: #070b0e;
   border: 1px solid var(--line);
 }
 .cell {
   width: var(--cell);
   height: var(--cell);
-  background: #2a2722;
-  transition: background 220ms ease, box-shadow 220ms ease;
+  background: #12181d;
+  transition: background 90ms linear, box-shadow 90ms linear, transform 90ms linear;
 }
-.cell.filled { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
+.cell.filled { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14); }
+.cell.active {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28);
+  transform: scale(0.96);
+}
 .cell.ghost {
   background: var(--ghost);
-  box-shadow: inset 0 0 0 1px rgba(13, 110, 110, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(60, 184, 199, 0.45);
 }
 .cell.I { background: var(--I); }
 .cell.O { background: var(--O); }
@@ -127,45 +134,67 @@ body { padding: 28px 18px 64px; }
 .cell.L { background: var(--L); }
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(4rem, 1fr));
+  grid-template-columns: repeat(4, minmax(3.6rem, 1fr));
   gap: 8px;
   width: 100%;
-  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }
 .stats div {
   border: 1px solid var(--line);
   padding: 8px;
-  background: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.03);
 }
 .stats strong {
   display: block;
-  font-size: 1.1rem;
+  font-size: 1.08rem;
   margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.tempo {
+  width: 100%;
+  margin-top: 2px;
+}
+.tempo-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tempo-track {
+  height: 8px;
+  background: var(--bar-track);
+  overflow: hidden;
+}
+.tempo-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--ready-fill));
+  transition: width 220ms ease;
 }
 .loop {
   display: grid;
   gap: 8px;
   margin-bottom: 14px;
-  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
   font-size: 0.86rem;
+  color: var(--muted);
 }
 .loop ol {
   margin: 0;
   padding-left: 1.2rem;
-  color: var(--muted);
 }
 .loop li[data-active="true"] {
   color: var(--ink);
   font-weight: 600;
 }
-.bars { display: grid; gap: 8px; max-height: 280px; overflow: auto; }
+.bars { display: grid; gap: 8px; max-height: 260px; overflow: auto; }
 .bar-row {
   display: grid;
   grid-template-columns: minmax(3.2rem, 4rem) 1fr 3.2rem;
   gap: 8px;
   align-items: center;
-  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
   font-size: 0.86rem;
 }
 .track {
@@ -177,7 +206,7 @@ body { padding: 28px 18px 64px; }
   height: 100%;
   width: 0;
   background: var(--accent);
-  transition: width 420ms cubic-bezier(.2,.8,.2,1);
+  transition: width 380ms cubic-bezier(.2,.8,.2,1);
 }
 .bar-row.selected .fill { background: var(--ready-fill); }
 .pct {
@@ -189,31 +218,29 @@ body { padding: 28px 18px 64px; }
   margin-top: 14px;
   padding: 14px;
   border: 1px solid var(--line);
-  background: #fffdf8;
+  background: rgba(255,255,255,0.03);
 }
 .verdict[data-status="locked"] { border-left: 5px solid var(--ready); }
 .verdict[data-status="rejected"],
 .verdict[data-status="blocked"] { border-left: 5px solid var(--reject); }
 .status {
   margin: 0 0 6px;
-  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 .verdict[data-status="locked"] .status { color: var(--ready); }
 .verdict[data-status="rejected"] .status,
 .verdict[data-status="blocked"] .status { color: var(--reject); }
-.reason { margin: 0 0 8px; font-size: 1.1rem; line-height: 1.35; }
+.reason { margin: 0 0 8px; font-size: 1.05rem; line-height: 1.35; }
 .kv {
   display: grid;
   gap: 6px;
-  font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
   font-size: 0.86rem;
 }
 .kv div {
   display: grid;
-  grid-template-columns: 7rem 1fr;
+  grid-template-columns: 7.2rem 1fr;
   gap: 8px;
   padding-top: 6px;
   border-top: 1px solid var(--line);
@@ -232,7 +259,7 @@ body { padding: 28px 18px 64px; }
   appearance: none;
   border: 1px solid var(--ink);
   background: var(--ink);
-  color: #f7f3ea;
+  color: #0e1418;
   padding: 10px 14px;
   cursor: pointer;
   font: inherit;
@@ -245,7 +272,8 @@ body { padding: 28px 18px 64px; }
 .footnote {
   margin-top: 18px;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 </style>
 <body>
@@ -257,21 +285,30 @@ body { padding: 28px 18px 64px; }
     </header>
     <div class="layout">
       <section class="panel board-wrap" aria-labelledby="board-heading">
-        <h2 id="board-heading">Board</h2>
+        <h2 id="board-heading">Live board</h2>
         <div class="board" id="board" aria-label="Tetris board"></div>
         <div class="stats">
           <div>Piece<strong id="stat-piece">—</strong></div>
           <div>Score<strong id="stat-score">0</strong></div>
           <div>Lines<strong id="stat-lines">0</strong></div>
+          <div>Level<strong id="stat-level">0</strong></div>
+        </div>
+        <div class="tempo" aria-label="Drop speed">
+          <div class="tempo-label">
+            <span>Gravity</span>
+            <span id="tempo-ms">—</span>
+          </div>
+          <div class="tempo-track"><div class="tempo-fill" id="tempo-fill"></div></div>
         </div>
       </section>
       <section class="panel" aria-labelledby="decision-heading">
-        <h2 id="decision-heading">Typed Choice loop</h2>
+        <h2 id="decision-heading">Choice while it falls</h2>
         <div class="loop">
           <ol>
-            <li data-phase="enumerate">1. Engine enumerates legal placements</li>
-            <li data-phase="choice">2. Choice over placement IDs + probabilities</li>
-            <li data-phase="verify">3. Host verifies ID / cells before lock</li>
+            <li data-phase="enumerate">1. Engine enumerates legal locks</li>
+            <li data-phase="choice">2. Choice over IDs + probabilities</li>
+            <li data-phase="fall">3. Piece rotates / shifts / falls</li>
+            <li data-phase="verify">4. Host verifies cells, then locks</li>
           </ol>
         </div>
         <div class="bars" id="bars" aria-label="Placement probabilities"></div>
@@ -281,14 +318,15 @@ body { padding: 28px 18px 64px; }
           <div class="kv" id="verdict-kv"></div>
         </div>
         <div class="controls">
-          <button type="button" id="prev" class="secondary">Previous</button>
+          <button type="button" id="prev" class="secondary">Previous piece</button>
           <button type="button" id="play">Play</button>
-          <button type="button" id="next">Next lock</button>
+          <button type="button" id="next">Next piece</button>
         </div>
       </section>
     </div>
     <p class="footnote">
-      Path A heuristic softmax only — no torch / Hub. The model never invents
+      Path A heuristic softmax only — no torch / Hub. Pieces fall with real
+      gravity; drop interval shrinks as level rises. The model never invents
       coordinates: it picks among engine-enumerated IDs, and the host re-checks
       exact cells before locking.
     </p>
@@ -299,8 +337,14 @@ const boardEl = document.getElementById("board");
 const barsEl = document.getElementById("bars");
 const verdict = document.getElementById("verdict");
 const phaseItems = [...document.querySelectorAll(".loop li")];
-let index = 0;
+const BASE_DROP = 800;
+const MIN_DROP = 55;
+
+let stepIndex = 0;
+let frameIndex = 0;
+let playing = false;
 let timer = null;
+let choiceRenderedFor = -1;
 
 function chip(text) {
   const el = document.createElement("span");
@@ -316,9 +360,11 @@ function initMeta() {
   meta.replaceChildren(
     chip(`path ${DATA.path}`),
     chip(DATA.scorer || "heuristic"),
-    chip(`${DATA.steps.length} locks`),
+    chip(DATA.mode || "realtime"),
+    chip(`${DATA.steps.length} pieces`),
     chip(`seed ${DATA.seed}`),
     chip(`score ${DATA.final_score}`),
+    chip(`level ${DATA.final_level ?? 0}`),
   );
   boardEl.replaceChildren();
   for (let i = 0; i < 200; i++) {
@@ -328,8 +374,9 @@ function initMeta() {
   }
 }
 
-function paintBoard(rows, ghostCells) {
+function paintBoard(rows, activeCells, ghostCells) {
   const cells = boardEl.children;
+  const active = new Set((activeCells || []).map(([c, r]) => `${c},${r}`));
   const ghost = new Set((ghostCells || []).map(([c, r]) => `${c},${r}`));
   for (let r = 0; r < 20; r++) {
     const row = rows[r] || ".".repeat(10);
@@ -339,6 +386,10 @@ function paintBoard(rows, ghostCells) {
       el.className = "cell";
       if (ch !== ".") {
         el.classList.add("filled", ch);
+      } else if (active.has(`${c},${r}`)) {
+        const piece = (DATA.steps[stepIndex] || {}).piece;
+        el.classList.add("filled", "active");
+        if (piece) el.classList.add(piece);
       } else if (ghost.has(`${c},${r}`)) {
         el.classList.add("ghost");
       }
@@ -352,21 +403,17 @@ function setPhase(name) {
   }
 }
 
-function render(i) {
-  const step = DATA.steps[i];
-  if (!step) return;
-  index = i;
-  const host = step.host || {};
+function setTempo(dropMs) {
+  const ms = dropMs || BASE_DROP;
+  document.getElementById("tempo-ms").textContent = `${ms} ms / row`;
+  const span = BASE_DROP - MIN_DROP;
+  const speed = span <= 0 ? 0 : (BASE_DROP - ms) / span;
+  document.getElementById("tempo-fill").style.width = `${Math.max(4, Math.min(100, speed * 100))}%`;
+}
+
+function renderBars(step) {
   const choice = step.choice || {};
   const selected = choice.selected;
-  const placement = (host.placement) ||
-    (step.candidates || []).find((c) => c.id === selected);
-  const ghost = placement ? placement.occupied_cells : [];
-  paintBoard(step.board_before, ghost);
-  document.getElementById("stat-piece").textContent = step.piece;
-  document.getElementById("stat-score").textContent = String(step.score);
-  document.getElementById("stat-lines").textContent = String(step.lines_total);
-
   const probs = choice.probabilities || {};
   barsEl.replaceChildren();
   const entries = Object.entries(probs);
@@ -375,31 +422,36 @@ function render(i) {
     empty.className = "reason";
     empty.textContent = "No Choice — fewer than two legal placements.";
     barsEl.appendChild(empty);
-    setPhase("enumerate");
-  } else {
-    setPhase("choice");
-    for (const [name, value] of entries) {
-      const row = document.createElement("div");
-      row.className = "bar-row" + (name === selected ? " selected" : "");
-      const label = document.createElement("code");
-      label.className = "mono";
-      label.textContent = name;
-      const track = document.createElement("div");
-      track.className = "track";
-      const fill = document.createElement("div");
-      fill.className = "fill";
-      track.appendChild(fill);
-      const pct = document.createElement("span");
-      pct.className = "pct";
-      pct.textContent = `${Math.round(value * 1000) / 10}%`;
-      row.append(label, track, pct);
-      barsEl.appendChild(row);
-      requestAnimationFrame(() => {
-        fill.style.width = `${Math.max(2, value * 100)}%`;
-      });
-    }
+    return;
   }
+  for (const [name, value] of entries) {
+    const row = document.createElement("div");
+    row.className = "bar-row" + (name === selected ? " selected" : "");
+    const label = document.createElement("code");
+    label.className = "mono";
+    label.textContent = name;
+    const track = document.createElement("div");
+    track.className = "track";
+    const fill = document.createElement("div");
+    fill.className = "fill";
+    track.appendChild(fill);
+    const pct = document.createElement("span");
+    pct.className = "pct";
+    pct.textContent = `${Math.round(value * 1000) / 10}%`;
+    row.append(label, track, pct);
+    barsEl.appendChild(row);
+    requestAnimationFrame(() => {
+      fill.style.width = `${Math.max(2, value * 100)}%`;
+    });
+  }
+}
 
+function renderVerdict(step) {
+  const host = step.host || {};
+  const choice = step.choice || {};
+  const selected = choice.selected;
+  const placement = host.placement ||
+    (step.candidates || []).find((c) => c.id === selected);
   const status = host.status || "locked";
   verdict.dataset.status = status;
   document.getElementById("verdict-status").textContent = status;
@@ -407,18 +459,19 @@ function render(i) {
   const kv = document.getElementById("verdict-kv");
   kv.replaceChildren();
   const rows = [
-    ["step", `${i + 1} / ${DATA.steps.length}`],
+    ["piece #", `${step.index + 1} / ${DATA.steps.length}`],
     ["candidates", String((step.candidates || []).length)],
     ["selected", selected || "—"],
     ["confidence", choice.confidence != null ? choice.confidence.toFixed(3) : "—"],
     ["verified", host.verified ? "yes" : "no"],
+    ["level", String(step.level ?? 0)],
+    ["drop", `${step.drop_ms ?? "—"} ms`],
   ];
   if (placement) {
     rows.push(
       ["rotation", placement.rotation],
       ["column", String(placement.column)],
       ["landing row", String(placement.landing_row)],
-      ["cells", JSON.stringify(placement.occupied_cells)],
     );
   }
   if (host.lines_cleared != null) {
@@ -434,49 +487,121 @@ function render(i) {
     div.append(key, val);
     kv.appendChild(div);
   }
-  if (host.verified) setPhase("verify");
-  // After a short beat, show the locked board.
-  if (host.verified && step.board_after) {
-    window.setTimeout(() => {
-      if (index === i) paintBoard(step.board_after, []);
-    }, 520);
+}
+
+function currentFrames(step) {
+  return step.frames && step.frames.length ? step.frames : [{
+    kind: "lock",
+    board: step.board_after || step.board_before,
+    score: step.score,
+    lines_total: step.lines_total,
+    level: step.level || 0,
+    drop_ms: step.drop_ms || BASE_DROP,
+    piece: step.piece,
+    active: null,
+    ghost: [],
+    hold_ms: 500,
+  }];
+}
+
+function showFrame(stepIdx, frIdx) {
+  const step = DATA.steps[stepIdx];
+  if (!step) return;
+  const frames = currentFrames(step);
+  const frame = frames[Math.min(frIdx, frames.length - 1)];
+  stepIndex = stepIdx;
+  frameIndex = Math.min(frIdx, frames.length - 1);
+
+  if (choiceRenderedFor !== stepIdx) {
+    renderBars(step);
+    renderVerdict(step);
+    choiceRenderedFor = stepIdx;
+  }
+
+  const activeCells = frame.active && frame.active.cells ? frame.active.cells : [];
+  paintBoard(frame.board, activeCells, frame.ghost || []);
+  document.getElementById("stat-piece").textContent = frame.piece || step.piece || "—";
+  document.getElementById("stat-score").textContent = String(frame.score ?? step.score);
+  document.getElementById("stat-lines").textContent = String(frame.lines_total ?? step.lines_total);
+  document.getElementById("stat-level").textContent = String(frame.level ?? step.level ?? 0);
+  setTempo(frame.drop_ms ?? step.drop_ms);
+
+  const kind = frame.kind || "fall";
+  if (kind === "choice") setPhase("choice");
+  else if (kind === "fall" || kind === "shift" || kind === "rotate" || kind === "spawn") setPhase("fall");
+  else if (kind === "lock") setPhase("verify");
+  else setPhase("enumerate");
+}
+
+function clearTimer() {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
   }
 }
 
 function stopPlay() {
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
+  playing = false;
+  clearTimer();
   document.getElementById("play").textContent = "Play";
 }
 
-function togglePlay() {
-  if (timer) {
+function scheduleNext() {
+  clearTimer();
+  if (!playing) return;
+  const step = DATA.steps[stepIndex];
+  if (!step) {
     stopPlay();
     return;
   }
-  document.getElementById("play").textContent = "Pause";
-  timer = setInterval(() => {
-    if (index >= DATA.steps.length - 1) {
+  const frames = currentFrames(step);
+  const frame = frames[frameIndex];
+  const delay = Math.max(40, frame.hold_ms || frame.drop_ms || 120);
+  timer = setTimeout(() => {
+    if (!playing) return;
+    if (frameIndex < frames.length - 1) {
+      showFrame(stepIndex, frameIndex + 1);
+      scheduleNext();
+      return;
+    }
+    if (stepIndex >= DATA.steps.length - 1) {
       stopPlay();
       return;
     }
-    render(index + 1);
-  }, 1400);
+    showFrame(stepIndex + 1, 0);
+    scheduleNext();
+  }, delay);
+}
+
+function togglePlay() {
+  if (playing) {
+    stopPlay();
+    return;
+  }
+  playing = true;
+  document.getElementById("play").textContent = "Pause";
+  // If we are sitting on the last frame of the last piece, restart.
+  const lastStep = DATA.steps.length - 1;
+  const lastFrames = currentFrames(DATA.steps[lastStep] || { frames: [] });
+  if (stepIndex === lastStep && frameIndex >= lastFrames.length - 1) {
+    showFrame(0, 0);
+  }
+  scheduleNext();
+}
+
+function jumpPiece(delta) {
+  stopPlay();
+  const next = Math.max(0, Math.min(DATA.steps.length - 1, stepIndex + delta));
+  showFrame(next, 0);
 }
 
 initMeta();
-render(0);
-document.getElementById("prev").onclick = () => {
-  stopPlay();
-  render(Math.max(0, index - 1));
-};
-document.getElementById("next").onclick = () => {
-  stopPlay();
-  render(Math.min(DATA.steps.length - 1, index + 1));
-};
+showFrame(0, 0);
+document.getElementById("prev").onclick = () => jumpPiece(-1);
+document.getElementById("next").onclick = () => jumpPiece(1);
 document.getElementById("play").onclick = togglePlay;
+// Auto-start so --open feels like a live game immediately.
+togglePlay();
 </script>
 </body>
 </html>

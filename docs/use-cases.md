@@ -17,7 +17,7 @@ already exist in this repository.
 | High-stakes abstention | ensemble of choice scorers | [§ Ensemble abstention](#4-high-stakes-ensemble-abstention) |
 | Next-click navigation | one `choice` over link titles | [§ Wikispeedia](#5-next-click-navigation-wikispeedia) |
 | Screen controller (lab) | vision softmax over fixed buttons | [§ Vision lab](#6-screen-controller-lab) |
-| Real-time placement (Tetris) | one `choice` over legal placement IDs | [examples/tetris](../examples/tetris/README.md) |
+| Realtime Tetris (gravity + Choice) | falling pieces; one `choice` over legal lock IDs | [examples/tetris](../examples/tetris/README.md) |
 
 ---
 

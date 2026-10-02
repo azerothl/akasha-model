@@ -1,16 +1,18 @@
-"""Paced Tetris demo: enumerate → Choice → host verify → lock.
+"""Realtime Tetris demo: falling pieces + Choice over legal locks.
 
-Path A only (heuristic softmax). Writes a self-contained browser page so
-you can follow legal placement IDs, probabilities, and host verification.
+Pieces spawn at the top, Choice picks a verified placement, then the piece
+rotates/shifts and falls with visible gravity. Drop speed accelerates as
+lines / level rise.
+
+Path A only (heuristic softmax). Optional Path B is not required; keep this
+heuristic as the offline / CI fallback.
 
 ```sh
 uv pip install -e '.[dev]'
 python examples/tetris/play.py --open
 ```
 
-Text-only paced log: ``python examples/tetris/play.py --text``.
-Optional neural Path B is not required; document any future MASK scorer as an
-extra and keep this heuristic as the offline / CI fallback.
+Text-only: ``python examples/tetris/play.py --text --no-html``.
 """
 
 from __future__ import annotations
@@ -23,11 +25,20 @@ from pathlib import Path
 from typing import Any
 
 from engine import (
+    ActivePiece,
+    Placement,
     SevenBag,
     board_to_rows,
+    drop_interval_ms,
     empty_board,
     enumerate_placements,
+    ghost_cells,
+    level_for_lines,
     lock_verified,
+    plan_approach,
+    score_for_clear,
+    score_for_soft_drop,
+    spawn_piece,
     verify_placement,
 )
 from scorer import score_placements, top_alternatives
@@ -37,13 +48,16 @@ TEMPLATE = ROOT / "visual.html"
 DEFAULT_OUT = ROOT / "out" / "demo.html"
 
 
-def _placement_payload(item) -> dict[str, Any]:
+def _placement_payload(item: Placement) -> dict[str, Any]:
     return {
         "id": item.placement_id,
         "piece": item.piece,
         "rotation": item.rotation,
+        "rotation_index": item.rotation_index,
         "column": item.column,
         "landing_row": item.landing_row,
+        "origin_col": item.origin_col,
+        "origin_row": item.origin_row,
         "occupied_cells": [list(cell) for cell in item.occupied_cells],
         "lines_cleared": item.lines_cleared,
         "holes": item.holes,
@@ -53,13 +67,71 @@ def _placement_payload(item) -> dict[str, Any]:
     }
 
 
+def _active_payload(active: ActivePiece | None) -> dict[str, Any] | None:
+    if active is None:
+        return None
+    return {
+        "piece": active.piece,
+        "rotation": active.rotation,
+        "rotation_index": active.rotation_index,
+        "origin_col": active.origin_col,
+        "origin_row": active.origin_row,
+        "cells": [list(cell) for cell in active.cells()],
+    }
+
+
+def _choice_payload(result) -> dict[str, Any]:
+    return {
+        "selected": result.selected,
+        "confidence": round(result.confidence, 4),
+        "probabilities": {
+            key: round(value, 4)
+            for key, value in top_alternatives(result, limit=8)
+        },
+        "all_probabilities": {
+            key: round(value, 4)
+            for key, value in result.probabilities.items()
+        },
+        "scorer": "path_a_heuristic",
+    }
+
+
+def _frame(
+    *,
+    kind: str,
+    board_rows: list[str],
+    score: int,
+    lines_total: int,
+    level: int,
+    drop_ms: int,
+    piece: str | None = None,
+    active: ActivePiece | None = None,
+    ghost: list[list[int]] | None = None,
+    hold_ms: int | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "kind": kind,
+        "board": board_rows,
+        "score": score,
+        "lines_total": lines_total,
+        "level": level,
+        "drop_ms": drop_ms,
+        "piece": piece,
+        "active": _active_payload(active),
+        "ghost": ghost or [],
+    }
+    if hold_ms is not None:
+        payload["hold_ms"] = hold_ms
+    return payload
+
+
 def run_game(
     *,
-    pieces: int = 12,
+    pieces: int = 18,
     seed: int = 7,
     temperature: float = 4.0,
 ) -> dict[str, Any]:
-    """Play ``pieces`` locks (or until game over) and return a visual trace."""
+    """Play ``pieces`` locks (or until game over) with falling-frame traces."""
     board = empty_board()
     bag = SevenBag(seed=seed)
     steps: list[dict[str, Any]] = []
@@ -68,11 +140,27 @@ def run_game(
     game_over = False
 
     for index in range(pieces):
+        level = level_for_lines(lines_total)
+        drop_ms = drop_interval_ms(level, score)
         piece = bag.next_piece()
         before = board_to_rows(board)
+        spawned = spawn_piece(board, piece)
         candidates = enumerate_placements(board, piece)
-        if len(candidates) < 2:
+
+        if spawned is None or len(candidates) < 2:
             game_over = True
+            frames = [
+                _frame(
+                    kind="game_over",
+                    board_rows=before,
+                    score=score,
+                    lines_total=lines_total,
+                    level=level,
+                    drop_ms=drop_ms,
+                    piece=piece,
+                    hold_ms=900,
+                )
+            ]
             steps.append(
                 {
                     "index": index,
@@ -82,40 +170,51 @@ def run_game(
                     "choice": None,
                     "host": {
                         "status": "blocked",
-                        "reason": "fewer than two legal placements — game over",
+                        "reason": (
+                            "spawn blocked"
+                            if spawned is None
+                            else "fewer than two legal placements — game over"
+                        ),
                         "verified": False,
                     },
                     "board_after": before,
                     "score": score,
                     "lines_total": lines_total,
+                    "level": level,
+                    "drop_ms": drop_ms,
+                    "frames": frames,
                 }
             )
             break
 
         result = score_placements(candidates, temperature=temperature)
         selected = result.selected
-        assert selected is not None  # threshold defaults to 0.0
+        assert selected is not None
         verified = verify_placement(board, piece, selected, candidates)
+        choice = _choice_payload(result)
+
         if not verified.ok or verified.placement is None:
+            frames = [
+                _frame(
+                    kind="choice",
+                    board_rows=before,
+                    score=score,
+                    lines_total=lines_total,
+                    level=level,
+                    drop_ms=drop_ms,
+                    piece=piece,
+                    active=spawned,
+                    ghost=[list(cell) for cell in ghost_cells(board, spawned)],
+                    hold_ms=700,
+                )
+            ]
             steps.append(
                 {
                     "index": index,
                     "piece": piece,
                     "board_before": before,
                     "candidates": [_placement_payload(item) for item in candidates],
-                    "choice": {
-                        "selected": selected,
-                        "confidence": round(result.confidence, 4),
-                        "probabilities": {
-                            key: round(value, 4)
-                            for key, value in top_alternatives(result, limit=8)
-                        },
-                        "all_probabilities": {
-                            key: round(value, 4)
-                            for key, value in result.probabilities.items()
-                        },
-                        "scorer": "path_a_heuristic",
-                    },
+                    "choice": choice,
                     "host": {
                         "status": "rejected",
                         "reason": verified.reason,
@@ -124,59 +223,135 @@ def run_game(
                     "board_after": before,
                     "score": score,
                     "lines_total": lines_total,
+                    "level": level,
+                    "drop_ms": drop_ms,
+                    "frames": frames,
                 }
             )
             game_over = True
             break
 
-        board, cleared = lock_verified(board, piece, verified.placement)
+        target = verified.placement
+        path = plan_approach(board, piece, target)
+        frames: list[dict[str, Any]] = []
+
+        # Soft-drop points for every gravity step (rows the piece falls).
+        fall_rows = 0
+        if path:
+            fall_rows = max(0, path[-1].origin_row - path[0].origin_row)
+        score += score_for_soft_drop(fall_rows)
+        drop_ms = drop_interval_ms(level, score)
+
+        # Brief pause so the Choice bars / target ghost are readable.
+        frames.append(
+            _frame(
+                kind="choice",
+                board_rows=before,
+                score=score,
+                lines_total=lines_total,
+                level=level,
+                drop_ms=drop_ms,
+                piece=piece,
+                active=spawned,
+                ghost=[list(cell) for cell in target.occupied_cells],
+                hold_ms=max(280, min(620, drop_ms)),
+            )
+        )
+
+        prev: ActivePiece | None = None
+        for pose in path:
+            # Recompute tempo from live score so gravity visibly ramps mid-run.
+            live_drop = drop_interval_ms(level, score)
+            if prev is not None and pose.origin_row > prev.origin_row:
+                kind = "fall"
+                hold = live_drop
+            elif prev is not None and pose.rotation_index != prev.rotation_index:
+                kind = "rotate"
+                hold = max(70, live_drop // 4)
+            elif prev is not None and pose.origin_col != prev.origin_col:
+                kind = "shift"
+                hold = max(55, live_drop // 5)
+            else:
+                kind = "spawn"
+                hold = max(90, live_drop // 3)
+            frames.append(
+                _frame(
+                    kind=kind,
+                    board_rows=before,
+                    score=score,
+                    lines_total=lines_total,
+                    level=level,
+                    drop_ms=live_drop,
+                    piece=piece,
+                    active=pose,
+                    ghost=[list(cell) for cell in target.occupied_cells],
+                    hold_ms=hold,
+                )
+            )
+            prev = pose
+
+        board, cleared = lock_verified(board, piece, target)
         lines_total += cleared
-        score += (0, 40, 100, 300, 1200)[cleared] if cleared <= 4 else 1200
+        level_after = level_for_lines(lines_total)
+        score += score_for_clear(cleared, level)
+        drop_after = drop_interval_ms(level_after, score)
+        after = board_to_rows(board)
+
+        frames.append(
+            _frame(
+                kind="lock",
+                board_rows=after,
+                score=score,
+                lines_total=lines_total,
+                level=level_after,
+                drop_ms=drop_after,
+                piece=piece,
+                hold_ms=max(160, drop_after // 2),
+            )
+        )
+
         steps.append(
             {
                 "index": index,
                 "piece": piece,
                 "board_before": before,
                 "candidates": [_placement_payload(item) for item in candidates],
-                "choice": {
-                    "selected": selected,
-                    "confidence": round(result.confidence, 4),
-                    "probabilities": {
-                        key: round(value, 4)
-                        for key, value in top_alternatives(result, limit=8)
-                    },
-                    "all_probabilities": {
-                        key: round(value, 4)
-                        for key, value in result.probabilities.items()
-                    },
-                    "scorer": "path_a_heuristic",
-                },
+                "choice": choice,
                 "host": {
                     "status": "locked",
                     "reason": verified.reason,
                     "verified": True,
-                    "placement": _placement_payload(verified.placement),
+                    "placement": _placement_payload(target),
                     "lines_cleared": cleared,
                 },
-                "board_after": board_to_rows(board),
+                "board_after": after,
                 "score": score,
                 "lines_total": lines_total,
+                "level": level_after,
+                "drop_ms": drop_after,
+                "frames": frames,
             }
         )
 
+    final_level = level_for_lines(lines_total)
     return {
-        "title": "Akasha Model — Tetris Choice demo",
+        "title": "Akasha Model — Tetris",
         "path": "A",
         "scorer": "path_a_heuristic",
+        "mode": "realtime_gravity",
         "note": (
-            "Engine enumerates legal placements → Choice over IDs → host "
-            "verifies cells before lock. Path A heuristic softmax; no torch."
+            "Random pieces fall from the top with visible gravity. "
+            "Choice picks among engine-enumerated lock IDs (probs on the right); "
+            "the host verifies cells, then the piece rotates, shifts, and drops. "
+            "Tempo accelerates as score (and level) rise. Path A heuristic — no torch."
         ),
         "seed": seed,
         "pieces_requested": pieces,
         "game_over": game_over,
         "final_score": score,
         "final_lines": lines_total,
+        "final_level": final_level,
+        "final_drop_ms": drop_interval_ms(final_level, score),
         "steps": steps,
     }
 
@@ -191,14 +366,19 @@ def render_html(trace: dict[str, Any], template: Path = TEMPLATE) -> str:
 
 
 def print_text(trace: dict[str, Any]) -> None:
-    print(f"{trace['title']} · path {trace['path']} · {trace['scorer']}")
+    print(f"{trace['title']} · path {trace['path']} · {trace['scorer']} · {trace['mode']}")
     print(trace["note"])
     print()
     for step in trace["steps"]:
         choice = step.get("choice") or {}
         host = step["host"]
-        print(f"--- piece {step['index'] + 1}: {step['piece']} ---")
+        print(
+            f"--- piece {step['index'] + 1}: {step['piece']} · "
+            f"level {step['level']} · drop {step['drop_ms']}ms ---"
+        )
         print(f"legal placements: {len(step['candidates'])}")
+        fall_frames = sum(1 for frame in step.get("frames", []) if frame.get("kind") == "fall")
+        print(f"gravity frames: {fall_frames}")
         if choice:
             print(
                 f"Choice selected={choice['selected']} "
@@ -222,6 +402,7 @@ def print_text(trace: dict[str, Any]) -> None:
     print(
         f"done · steps={len(trace['steps'])} "
         f"score={trace['final_score']} lines={trace['final_lines']} "
+        f"level={trace['final_level']} drop_ms={trace['final_drop_ms']} "
         f"game_over={trace['game_over']}"
     )
 
@@ -231,8 +412,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--pieces",
         type=int,
-        default=12,
-        help="Number of locks to attempt (default: 12)",
+        default=18,
+        help="Number of locks to attempt (default: 18)",
     )
     parser.add_argument("--seed", type=int, default=7, help="7-bag seed")
     parser.add_argument(
@@ -295,9 +476,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Wrote {args.out}")
         print(
             f"Steps: {len(trace['steps'])} · score {trace['final_score']} · "
+            f"level {trace['final_level']} · drop {trace['final_drop_ms']}ms · "
             f"path {trace['path']}"
         )
-        print("Open the HTML to follow board → legal IDs → probs → host lock.")
+        print("Open the HTML: falling blocks + accelerating tempo + Choice probs.")
         if args.open:
             webbrowser.open(args.out.resolve().as_uri())
 
