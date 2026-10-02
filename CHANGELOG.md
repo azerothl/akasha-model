@@ -22,8 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per-row licence/source fields, no audio) (#58).
 - Mix number-sensitivity protocol (`scripts/evaluate_mix_number_sensitivity.py`):
   baseline / shuffled / perturbed / removed-number controls with ECE and
-  coverage-risk; CPU report for rule_prior + majority_prior; GPU 16GB noted as
-  hardware follow-up (#59).
+  coverage-risk; MASK tiny + BERT encoders; CPU and CUDA 16GB latency/RSS/VRAM
+  reports plus French instruction probe (#59).
 - Weight/data licence dossier (`docs/licences-poids.md`) for shipped checkpoints
   and base encoders; Gabriel review marked pending before commercial delivery
   (#60).

@@ -8,15 +8,14 @@ Controls (same questions, altered context):
   - numbers_removed: numeric fields set to null (scorer must tolerate / degrade)
 
 Reports per head (choice / score / noul): accuracy, ECE, coverage/risk, plus
-wall-clock latency and process RSS.
+wall-clock latency, process RSS, and (on CUDA) peak allocated VRAM.
 
-Encoders in this script (CPU-friendly, no Hub download):
-  - rule_prior: written rules from ``generate_mix_dataset.py`` (teacher)
-  - majority_prior: constant prior (balanced / unchanged / not-masked)
+Encoders:
+  - rule_prior / majority_prior: CPU-friendly baselines (no Hub download)
+  - mask:<path>: MASK DecisionModel checkpoint (tiny or HF/BERT)
 
-BERT / ModernBERT and GPU 16GB runs are documented as optional follow-ups when
-hardware and offline weights are available (see report ``device_notes`` /
-``docs/mix-number-sensitivity.md``).
+French: optional ``--french-probe`` rewrites question text to FR and records
+baseline accuracy vs the English instructions on the same rows.
 """
 
 from __future__ import annotations
@@ -25,16 +24,46 @@ import argparse
 import copy
 import importlib.util
 import json
+import os
 import random
-import resource
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+from akasha_model.offline import measure_rss_mb
 
 
 THRESHOLDS = (0.50, 0.60, 0.70, 0.80, 0.90, 0.95)
 ROOT = Path(__file__).resolve().parents[1]
+
+FRENCH_REWRITE = {
+    "preset": {
+        "instructions": "Choisissez un préréglage de mix pour cette session.",
+        "options": [
+            {"name": "vocal_forward", "description": "Mettre la voix en avant."},
+            {"name": "balanced", "description": "Garder un équilibre neutre."},
+            {"name": "bass_heavy", "description": "Renforcer les graves."},
+        ],
+    },
+    "vocal.gain": {
+        "instructions": "Ajustement ordonné du gain de la voix.",
+        "levels": [
+            "beaucoup plus bas",
+            "plus bas",
+            "inchangé",
+            "plus haut",
+            "beaucoup plus haut",
+        ],
+    },
+    "vocal_masked_by_bass": {
+        "instructions": "La voix est-elle masquée par la basse ?",
+        "criteria": {
+            "true": "Oui, le masquage est problématique.",
+            "false": "Non, la voix reste intelligible.",
+        },
+    },
+}
 
 
 def _mean(values: list[float]) -> float:
@@ -71,11 +100,6 @@ def _coverage_risk(confidence: list[float], correct: list[float]) -> dict[str, d
             "risk": 1.0 - accuracy if selected else 0.0,
         }
     return result
-
-
-def _rss_mb() -> float:
-    # Linux: KiB
-    return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 2)
 
 
 def _load_jsonl(path: Path) -> list[dict]:
@@ -178,11 +202,36 @@ def build_controls(rows: list[dict], seed: int = 0) -> dict[str, list[dict]]:
     }
 
 
+def rewrite_french(rows: list[dict]) -> list[dict]:
+    out = []
+    for row in rows:
+        item = copy.deepcopy(row)
+        questions = []
+        for question in item["questions"]:
+            patch = FRENCH_REWRITE.get(question["id"])
+            if patch is None:
+                questions.append(question)
+                continue
+            updated = dict(question)
+            updated.update(patch)
+            questions.append(updated)
+        item["questions"] = questions
+        out.append(item)
+    return out
+
+
 def _labels(row: dict) -> dict[str, int]:
     return {q["type"]: int(q["label"]) for q in row["questions"]}
 
 
-def _summarize(store: dict[str, dict[str, list]], *, elapsed_s: float, n_rows: int) -> dict[str, Any]:
+def _summarize(
+    store: dict[str, dict[str, list]],
+    *,
+    elapsed_s: float,
+    n_rows: int,
+    rss_mb: float,
+    cuda_peak_mb: float | None = None,
+) -> dict[str, Any]:
     heads = {}
     for head, values in store.items():
         heads[head] = {
@@ -194,12 +243,15 @@ def _summarize(store: dict[str, dict[str, list]], *, elapsed_s: float, n_rows: i
                 values.get("confidence", []), values.get("correct", []),
             ),
         }
-    return {
+    payload: dict[str, Any] = {
         "heads": heads,
         "latency_s": round(elapsed_s, 4),
         "latency_ms_per_row": round(1000.0 * elapsed_s / max(n_rows, 1), 3),
-        "rss_mb": _rss_mb(),
+        "rss_mb": rss_mb,
     }
+    if cuda_peak_mb is not None:
+        payload["cuda_peak_allocated_mb"] = round(cuda_peak_mb, 2)
+    return payload
 
 
 def _extract_numbers(row: dict) -> tuple[float, float, float, float]:
@@ -232,7 +284,12 @@ def evaluate_rule_prior(rows: list[dict], rules) -> dict[str, Any]:
         store["score"]["confidence"].append(1.0)
         store["noul"]["correct"].append(float(masked == labels["noul"]))
         store["noul"]["confidence"].append(1.0)
-    return _summarize(store, elapsed_s=time.perf_counter() - t0, n_rows=len(rows))
+    return _summarize(
+        store,
+        elapsed_s=time.perf_counter() - t0,
+        n_rows=len(rows),
+        rss_mb=measure_rss_mb(),
+    )
 
 
 def evaluate_majority_prior(rows: list[dict], rules) -> dict[str, Any]:
@@ -248,22 +305,137 @@ def evaluate_majority_prior(rows: list[dict], rules) -> dict[str, Any]:
         store["score"]["confidence"].append(0.34)
         store["noul"]["correct"].append(float(0 == labels["noul"]))
         store["noul"]["confidence"].append(0.5)
-    return _summarize(store, elapsed_s=time.perf_counter() - t0, n_rows=len(rows))
+    return _summarize(
+        store,
+        elapsed_s=time.perf_counter() - t0,
+        n_rows=len(rows),
+        rss_mb=measure_rss_mb(),
+    )
 
 
-def french_probe_note() -> dict[str, Any]:
-    return {
-        "status": "documented_not_benchmarked",
+def _cuda_peak_mb(device) -> float | None:
+    try:
+        import torch
+    except ImportError:
+        return None
+    if not hasattr(device, "type") or device.type != "cuda":
+        return None
+    return float(torch.cuda.max_memory_allocated(device)) / (1024.0 * 1024.0)
+
+
+def evaluate_mask_checkpoint(
+    rows: list[dict],
+    checkpoint: Path,
+    device_name: str,
+    batch_size: int = 8,
+) -> dict[str, Any]:
+    import torch
+    from akasha_model.decision import load_decision_checkpoint
+    from akasha_model.model import select_device
+    from akasha_model.typed_decisions import evaluate_typed_records
+
+    device = select_device(device_name)
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
+        torch.cuda.empty_cache()
+    model, tokenizer, config = load_decision_checkpoint(checkpoint, device)
+    t0 = time.perf_counter()
+    summary, records = evaluate_typed_records(
+        model, tokenizer, rows, device,
+        config.get("max_len", 768),
+        config.get("head_max_len", 384),
+        config.get("option_max_len", 48),
+        batch_size=batch_size,
+        permutations=1,
+    )
+    elapsed = time.perf_counter() - t0
+    store: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
+    for record in records:
+        kind = record["kind"]
+        store[kind]["correct"].append(float(record["label_correct"]))
+        store[kind]["confidence"].append(float(record["confidence"]))
+    result = _summarize(
+        store,
+        elapsed_s=elapsed,
+        n_rows=len(rows),
+        rss_mb=measure_rss_mb(),
+        cuda_peak_mb=_cuda_peak_mb(device),
+    )
+    result["typed_summary"] = {
+        name: {
+            "accuracy": summary[name]["accuracy"],
+            "ece": summary[name]["ece"],
+            "examples": summary[name]["examples"],
+        }
+        for name in ("all", "choice", "score", "noul")
+        if name in summary
+    }
+    result["checkpoint"] = str(checkpoint)
+    result["encoder_config"] = {
+        "encoder": config.get("encoder"),
+        "hf_model": config.get("hf_model"),
+        "width": config.get("width"),
+    }
+    del model
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    return result
+
+
+def french_probe_note(
+    measured: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    note = {
         "numeric_descriptors": (
             "Units are language-agnostic; FR and EN hosts share mix-descriptors schema v1."
         ),
         "question_instructions": (
-            "French instructions were not accuracy-benchmarked in this CPU report. "
-            "A smoke check (see tests) only asserts that FR instruction strings still "
-            "build valid Score/Choice/Noul primitives."
+            "French instructions rewrite the Choice/Score/Noul text while keeping "
+            "labels fixed; accuracy is compared to the English baseline on the same rows."
         ),
-        "follow_up": "Re-run controls with FR instructions once a trained checkpoint exists.",
     }
+    if measured is None:
+        note["status"] = "documented_not_benchmarked"
+        note["follow_up"] = (
+            "Pass --french-probe with a MASK checkpoint to measure FR vs EN accuracy."
+        )
+        return note
+    note["status"] = "measured"
+    note["measured"] = measured
+    return note
+
+
+def _parse_encoders(raw: str) -> list[tuple[str, Path | None]]:
+    items: list[tuple[str, Path | None]] = []
+    for part in raw.split(","):
+        name = part.strip()
+        if not name:
+            continue
+        if name.startswith("mask:"):
+            path = Path(name.split(":", 1)[1])
+            items.append((f"mask:{path.name}", path))
+        else:
+            items.append((name, None))
+    return items
+
+
+def _device_meta(device_name: str) -> dict[str, Any]:
+    meta: dict[str, Any] = {
+        "requested_device": device_name,
+        "torch_cuda_available": False,
+        "gpu_name": None,
+        "gpu_memory_total_mb": None,
+    }
+    try:
+        import torch
+        meta["torch_cuda_available"] = bool(torch.cuda.is_available())
+        if torch.cuda.is_available():
+            props = torch.cuda.get_device_properties(0)
+            meta["gpu_name"] = props.name
+            meta["gpu_memory_total_mb"] = round(props.total_memory / (1024.0 * 1024.0), 1)
+    except Exception:
+        pass
+    return meta
 
 
 def main() -> None:
@@ -271,58 +443,130 @@ def main() -> None:
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("reports/mix_number_sensitivity.json"))
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--device", default="cpu")
+    parser.add_argument("--device", default="cpu", choices=("cpu", "cuda", "mps", "auto"))
     parser.add_argument(
         "--encoders",
         default="rule_prior,majority_prior",
-        help="comma list from: rule_prior,majority_prior",
+        help="comma list: rule_prior,majority_prior,mask:/path/to.pt",
+    )
+    parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument(
+        "--french-probe",
+        action="store_true",
+        help="measure FR vs EN instruction accuracy on the first MASK encoder",
+    )
+    parser.add_argument(
+        "--offline-hub",
+        action="store_true",
+        help="set HF_HUB_OFFLINE / TRANSFORMERS_OFFLINE before loading HF encoders",
     )
     args = parser.parse_args()
+
+    if args.offline_hub:
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
     data_path = args.data
     rows = _load_jsonl(data_path / "test.jsonl" if data_path.is_dir() else data_path)
     controls = build_controls(rows, seed=args.seed)
     rules = _load_rules_module()
+    device_meta = _device_meta(args.device)
 
     device_notes = [
         f"requested_device={args.device}",
-        "This run publishes CPU metrics for rule_prior and majority_prior.",
-        "GPU 16GB + BERT/ModernBERT measurements are NOT included here "
-        "(hardware / Hub weights blocked in default CI).",
+        f"torch_cuda_available={device_meta['torch_cuda_available']}",
     ]
-    cuda = False
-    try:
-        import torch
-        cuda = bool(torch.cuda.is_available())
-    except Exception:
-        pass
-    device_notes.append(f"torch_cuda_available={cuda}")
+    if device_meta["gpu_name"]:
+        device_notes.append(
+            f"gpu={device_meta['gpu_name']} "
+            f"({device_meta['gpu_memory_total_mb']} MiB total)"
+        )
+    else:
+        # Always record GPU status so CPU CI smoke tests can assert on it.
+        device_notes.append(
+            "GPU not detected for this run; CUDA 16GB measurements live in "
+            "reports/mix_number_sensitivity_cuda.json when published."
+        )
+    device_notes.append(
+        "Values published as measured — no pass/fail threshold in this protocol."
+    )
 
     report: dict[str, Any] = {
         "protocol": "mix-number-sensitivity-v1",
         "data": str(data_path),
         "rows": len(rows),
-        "device": "cpu",
+        "device": args.device,
+        "device_meta": device_meta,
         "device_notes": device_notes,
         "french": french_probe_note(),
         "encoders": {},
     }
-    dispatch = {
+
+    prior_dispatch: dict[str, Callable[[list[dict], Any], dict[str, Any]]] = {
         "rule_prior": evaluate_rule_prior,
         "majority_prior": evaluate_majority_prior,
     }
-    for name in [e.strip() for e in args.encoders.split(",") if e.strip()]:
-        if name not in dispatch:
+    mask_checkpoints: list[tuple[str, Path]] = []
+
+    for name, path in _parse_encoders(args.encoders):
+        if name in prior_dispatch:
+            report["encoders"][name] = {
+                control: prior_dispatch[name](control_rows, rules)
+                for control, control_rows in controls.items()
+            }
+            continue
+        if path is None:
             report["encoders"][name] = {"error": f"unknown encoder {name}"}
             continue
+        if not path.is_file():
+            report["encoders"][name] = {"error": f"missing checkpoint {path}"}
+            continue
+        mask_checkpoints.append((name, path))
         report["encoders"][name] = {
-            control: dispatch[name](control_rows, rules)
+            control: evaluate_mask_checkpoint(
+                control_rows, path, args.device, batch_size=args.batch_size,
+            )
             for control, control_rows in controls.items()
         }
 
+    if args.french_probe:
+        if not mask_checkpoints:
+            report["french"] = french_probe_note({
+                "error": "--french-probe requires at least one mask: checkpoint",
+            })
+            report["french"]["status"] = "error"
+        else:
+            name, path = mask_checkpoints[0]
+            en = evaluate_mask_checkpoint(
+                controls["baseline"], path, args.device, batch_size=args.batch_size,
+            )
+            fr = evaluate_mask_checkpoint(
+                rewrite_french(controls["baseline"]), path, args.device,
+                batch_size=args.batch_size,
+            )
+            measured = {
+                "encoder": name,
+                "checkpoint": str(path),
+                "english_heads": en["heads"],
+                "french_heads": fr["heads"],
+                "delta_accuracy": {
+                    head: round(
+                        fr["heads"][head]["accuracy"] - en["heads"][head]["accuracy"],
+                        4,
+                    )
+                    for head in ("choice", "score", "noul")
+                },
+            }
+            report["french"] = french_probe_note(measured)
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"output": str(args.output), "rows": len(rows)}, sort_keys=True))
+    print(json.dumps({
+        "output": str(args.output),
+        "rows": len(rows),
+        "device": args.device,
+        "encoders": list(report["encoders"]),
+    }, sort_keys=True))
 
 
 if __name__ == "__main__":

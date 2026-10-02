@@ -8,7 +8,7 @@ stored here — only JSON descriptors and typed questions.
 | [`sample_questions.jsonl`](sample_questions.jsonl) | One multitask row: Choice preset, Score gain/pan, Noul masking |
 | [`presets.v1.json`](presets.v1.json) | Versioned MixPresetCatalog (levels → dB / pan / EQ / compressor) |
 | [`proposal_demo.py`](proposal_demo.py) | Confirmable batch + undo + audit envelope (no DAW apply) |
-| Number sensitivity | [`docs/mix-number-sensitivity.md`](../../docs/mix-number-sensitivity.md) |
+| Number sensitivity | [`docs/mix-number-sensitivity.md`](../../docs/mix-number-sensitivity.md) · [`reports/mix_number_sensitivity.md`](../../reports/mix_number_sensitivity.md) |
 | Offline Path B | [`docs/path-b-offline.md`](../../docs/path-b-offline.md) |
 | Dataset | [`docs/mix-dataset.md`](../../docs/mix-dataset.md) — `scripts/generate_mix_dataset.py` |
 | Licences | [`docs/licences-poids.md`](../../docs/licences-poids.md) |
