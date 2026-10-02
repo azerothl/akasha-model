@@ -28,8 +28,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # enablement: true so a first deploy can succeed even if Pages was
+      # just flipped on (or still missing) when this workflow runs.
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
