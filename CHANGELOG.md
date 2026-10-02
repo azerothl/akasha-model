@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   baseline / shuffled / perturbed / removed-number controls with ECE and
   coverage-risk; CPU report for rule_prior + majority_prior; GPU 16GB noted as
   hardware follow-up (#59).
+- Weight/data licence dossier (`docs/licences-poids.md`) for shipped checkpoints
+  and base encoders; Gabriel review marked pending before commercial delivery
+  (#60).
 
 ### Docs
 
