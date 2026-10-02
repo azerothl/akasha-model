@@ -10,6 +10,7 @@ stored here — only JSON descriptors and typed questions.
 | [`proposal_demo.py`](proposal_demo.py) | Confirmable batch + undo + audit envelope (no DAW apply) |
 | Number sensitivity | [`docs/mix-number-sensitivity.md`](../../docs/mix-number-sensitivity.md) |
 | Dataset | [`docs/mix-dataset.md`](../../docs/mix-dataset.md) — `scripts/generate_mix_dataset.py` |
+| Licences | [`docs/licences-poids.md`](../../docs/licences-poids.md) |
 | Contract | [`docs/contracts/mix-descriptors.md`](../../docs/contracts/mix-descriptors.md) |
 | Presets | [`docs/contracts/mix-presets.md`](../../docs/contracts/mix-presets.md) |
 
