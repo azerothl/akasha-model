@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Akasha Model — one-pass tool gate &amp; typed choices</title>
+  <meta name="description" content="Akasha Model: a small one-pass choice model for tool gates (authorize / abstain / block) and typed Choice, Score, Noul questions. Path A runs without PyTorch.">
+  <meta name="theme-color" content="#eef3ef">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Literata:opsz,wght@7..72,400;7..72,560&family=Syne:wght@560;650;720;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <nav class="site-nav" aria-label="Primary">
+    <a class="nav-brand" href="#top">Akasha Model</a>
+    <ul class="nav-links">
+      <li><a href="#gate">Gate</a></li>
+      <li><a href="#types">Types</a></li>
+      <li><a href="#demos">Demos</a></li>
+      <li><a href="#install">Install</a></li>
+      <li><a href="https://github.com/azerothl/akasha-model">GitHub</a></li>
+    </ul>
+  </nav>
+
+  <header class="hero" id="top">
+    <div class="hero-atmosphere" aria-hidden="true"></div>
+    <div class="hero-copy">
+      <p class="brand">Akasha<span>akasha-model</span></p>
+      <h1 class="headline">Authorize, abstain, or block — in one pass.</h1>
+      <p class="lede">A small choice model for tool gates and typed menus. Score a proposed call before your host runs it; Path&nbsp;A needs no PyTorch.</p>
+      <div class="cta-group">
+        <a class="btn btn-primary" href="#install">Try Path A</a>
+        <a class="btn btn-secondary" href="https://github.com/azerothl/akasha-model">GitHub</a>
+      </div>
+    </div>
+    <figure class="hero-visual">
+      <img
+        src="assets/visual-demo-ready.webp"
+        width="960"
+        height="640"
+        alt="Visual usage demo: tool-gate state, typed signals, and ready probability bars"
+        fetchpriority="high">
+      <figcaption class="hero-caption">Local visual demo — ready / abstain / blocked with live probability bars</figcaption>
+    </figure>
+  </header>
+
+  <main id="main">
+    <section id="gate" aria-labelledby="gate-title">
+      <div class="section-inner">
+        <h2 class="section-title" id="gate-title">Tool gate first</h2>
+        <p class="section-lede">For Akasha OS the product surface is a <strong>tool gate</strong>: your System&nbsp;2 proposes a call; Akasha returns <code>ready</code>, <code>abstain</code>, or <code>blocked</code>. The library never executes side effects.</p>
+        <div class="split two">
+          <div>
+            <p>Path&nbsp;A is deterministic policy over typed signals, catalog schema, and planner thresholds. Natural-language injection in arguments cannot grant capabilities or force <code>ready</code>.</p>
+            <div class="status-row" aria-label="Gate statuses">
+              <span class="ready">ready → host may run</span>
+              <span class="abstain">abstain → ask / reformulate</span>
+              <span class="blocked">blocked → do not execute</span>
+            </div>
+          </div>
+          <div class="path-strip" role="list" aria-label="Paths A to D">
+            <div class="path-item" role="listitem"><strong>Path A</strong><span>Gate / host / outcomes — no torch</span></div>
+            <div class="path-item" role="listitem"><strong>Path B</strong><span>Optional scorers &amp; offline recipes</span></div>
+            <div class="path-item" role="listitem"><strong>Path C</strong><span>Training &amp; typed-decision loops</span></div>
+            <div class="path-item" role="listitem"><strong>Path D</strong><span>Vision / games lab (shared option table)</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="types" aria-labelledby="types-title">
+      <div class="section-inner">
+        <h2 class="section-title" id="types-title">Choice · Score · Noul</h2>
+        <p class="section-lede">One forward pass over a changing list of typed questions. Each question returns its own probability distribution — not a token stream.</p>
+        <ul class="type-list">
+          <li>
+            <strong>Choice</strong>
+            <p>Pick among discrete options (routes, placements, tool names). Softmax over the menu.</p>
+          </li>
+          <li>
+            <strong>Score</strong>
+            <p>Rate or rank continuous-feeling signals when the host needs a graded preference.</p>
+          </li>
+          <li>
+            <strong>Noul</strong>
+            <p>Two-way <code>false</code> / <code>true</code> for yes–no gates and confirmations.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="demos" aria-labelledby="demos-title">
+      <div class="section-inner">
+        <h2 class="section-title" id="demos-title">Demos you run locally</h2>
+        <p class="section-lede">The static site stays light. Clone the repo, install Path&nbsp;A, and open a browser page generated on your machine — screenshots below are author-owned captures of those demos.</p>
+
+        <div class="demo-tabs" role="tablist" aria-label="Demo selector">
+          <button type="button" role="tab" id="tab-gate" aria-controls="panel-gate" aria-selected="true">Visual gate</button>
+          <button type="button" role="tab" id="tab-tetris" aria-controls="panel-tetris" aria-selected="false">Tetris Choice</button>
+        </div>
+
+        <div class="demo-panel is-active" role="tabpanel" id="panel-gate" aria-labelledby="tab-gate">
+          <figure class="demo-shot">
+            <img src="assets/visual-demo-blocked.webp" width="960" height="640" alt="Visual demo showing a blocked delete-without-confirm decision" loading="lazy">
+          </figure>
+          <div class="demo-copy">
+            <h3>Usage visual demo</h3>
+            <p>Steps through state → typed signals → probability bars → ready / abstain / blocked rationale (tool gate, then ticket-router abstain).</p>
+            <pre><code>uv venv &amp;&amp; source .venv/bin/activate
+uv pip install -e '.[dev]'
+python examples/usage/visual_demo.py --open</code></pre>
+          </div>
+        </div>
+
+        <div class="demo-panel" role="tabpanel" id="panel-tetris" aria-labelledby="tab-tetris" hidden>
+          <figure class="demo-shot">
+            <img src="assets/tetris-demo-midgame.webp" width="960" height="640" alt="Tetris realtime demo with Choice probability bars beside the board" loading="lazy">
+          </figure>
+          <div class="demo-copy">
+            <h3>Realtime Tetris</h3>
+            <p>Pieces fall with gravity; Choice samples a legal landing among engine-enumerated locks. Path&nbsp;A heuristic, CPU-only — host verifies before lock.</p>
+            <pre><code>python examples/tetris/play.py --open</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" aria-labelledby="install-title" class="install">
+      <div class="section-inner split two">
+        <div>
+          <h2 class="section-title" id="install-title">Install</h2>
+          <p class="section-lede">Stable pin for OS consumers. Path&nbsp;A installs without torch; add <code>[torch]</code> for scorers, training, and vision.</p>
+          <pre><code>pip install akasha-model==0.2.0</code></pre>
+          <p class="hint">Examples, checkpoints, and this site’s demos live in the <a href="https://github.com/azerothl/akasha-model">GitHub checkout</a> — the PyPI wheel ships the package and CLIs only.</p>
+        </div>
+        <div>
+          <h2 class="section-title">Go deeper</h2>
+          <p class="section-lede">Integrator docs and use cases beyond the gate.</p>
+          <div class="links-grid">
+            <a href="https://github.com/azerothl/akasha-model/blob/main/docs/using-the-tool-gate.md">Using the tool gate</a>
+            <a href="https://github.com/azerothl/akasha-model/blob/main/docs/use-cases.md">Concrete use cases</a>
+            <a href="https://github.com/azerothl/akasha-model/tree/main/examples/gate">examples/gate</a>
+            <a href="https://pypi.org/project/akasha-model/">PyPI · akasha-model</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="section-inner">
+      <p>Akasha Model · MIT · independent package for Akasha&nbsp;OS</p>
+      <p><a href="https://github.com/azerothl/akasha-model">azerothl/akasha-model</a></p>
+    </div>
+  </footer>
+
+  <script src="main.js" defer></script>
+</body>
+</html>
