@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mix descriptor contract (`akasha_model.mix`, schema + docs): host-computed
   dB/LUFS/centroid/band/crest/correlation/masking JSON state for Choice/Score/Noul
   mix questions; no audio in the package (#56).
+- Mix preset catalogue (`akasha_model.mix_presets`): ordered Choice/Score picks
+  map to explicit gain/pan/EQ/compressor values via versioned JSON; confidence
+  threshold is a required host parameter (#57).
 
 ### Docs
 
