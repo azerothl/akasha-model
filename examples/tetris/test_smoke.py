@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 from pathlib import Path
 
@@ -126,6 +127,13 @@ def test_plan_approach_shows_falling_rows(tetris_mods):
 def test_play_trace_and_html(tetris_mods):
     _engine, _scorer, play = tetris_mods
     trace = play.run_game(pieces=6, seed=3)
+    assert trace["seed"] == 3
+    assert trace["seed_source"] == "fixed"
+    assert trace["spawn_x_random"] is False
+    assert trace["spawn_col"] == 3
+    assert "7-bag" in trace["rng_hud"]
+    assert "not random X" in trace["rng_hud"]
+    assert "softmax sample" in trace["rng_hud"]
     assert trace["path"] == "A"
     assert trace["scorer"] == "path_a_heuristic"
     assert trace["mode"] == "realtime_gravity"
@@ -163,6 +171,11 @@ def test_play_trace_and_html(tetris_mods):
     assert "sampled ≠ argmax" in html
     assert "sample-note" in html
     assert "sampled locks" in html or "sample_locks" in html
+    assert '"seed":3' in html or '"seed": 3' in html
+    assert '"seed_source":"fixed"' in html or '"seed_source": "fixed"' in html
+    assert "rng-hud" in html
+    assert "not random X" in html
+    assert "this run" in html
 
 
 def test_sampling_can_differ_from_argmax(tetris_mods):
@@ -184,6 +197,71 @@ def test_sampling_can_differ_from_argmax(tetris_mods):
         step["choice"]["all_probabilities"][step["choice"]["argmax"]]
         >= step["choice"]["all_probabilities"][step["choice"]["selected"]]
     )
+
+
+def test_default_seed_is_fresh_each_run(tetris_mods):
+    _engine, _scorer, play = tetris_mods
+    first = play.run_game(pieces=6)
+    second = play.run_game(pieces=6)
+    assert first["seed_source"] == "random"
+    assert second["seed_source"] == "random"
+    assert first["seed"] != second["seed"]
+    types_a = [step["piece"] for step in first["steps"]]
+    types_b = [step["piece"] for step in second["steps"]]
+    locks_a = [
+        (step.get("choice") or {}).get("selected") for step in first["steps"]
+    ]
+    locks_b = [
+        (step.get("choice") or {}).get("selected") for step in second["steps"]
+    ]
+    assert types_a != types_b or locks_a != locks_b
+
+
+def test_fixed_seed_replays_types_and_locks(tetris_mods):
+    _engine, _scorer, play = tetris_mods
+    first = play.run_game(pieces=8, seed=42)
+    second = play.run_game(pieces=8, seed=42)
+    assert first["seed_source"] == "fixed"
+    assert [step["piece"] for step in first["steps"]] == [
+        step["piece"] for step in second["steps"]
+    ]
+    assert [
+        (step.get("choice") or {}).get("selected") for step in first["steps"]
+    ] == [
+        (step.get("choice") or {}).get("selected") for step in second["steps"]
+    ]
+
+
+def test_spawn_column_is_standard_not_random(tetris_mods):
+    engine, _scorer, play = tetris_mods
+    assert engine.SPAWN_COL == 3
+    board = engine.empty_board()
+    for piece in engine.BAG_ORDER:
+        active = engine.spawn_piece(board, piece)
+        assert active is not None
+        assert active.origin_col == engine.SPAWN_COL
+    trace = play.run_game(pieces=4, seed=5)
+    assert trace["spawn_col"] == engine.SPAWN_COL
+    assert trace["spawn_x_random"] is False
+
+
+def test_cli_omitted_seed_is_random(tetris_mods, tmp_path):
+    _engine, _scorer, play = tetris_mods
+    first_json = tmp_path / "a.json"
+    second_json = tmp_path / "b.json"
+    assert play.main(["--pieces", "4", "--json", str(first_json), "--no-html"]) == 0
+    assert play.main(["--pieces", "4", "--json", str(second_json), "--no-html"]) == 0
+    first = json.loads(first_json.read_text(encoding="utf-8"))
+    second = json.loads(second_json.read_text(encoding="utf-8"))
+    assert first["seed_source"] == "random"
+    assert second["seed_source"] == "random"
+    assert first["seed"] != second["seed"]
+    assert play.main(
+        ["--pieces", "4", "--seed", "0", "--json", str(tmp_path / "z.json"), "--no-html"]
+    ) == 0
+    zero = json.loads((tmp_path / "z.json").read_text(encoding="utf-8"))
+    assert zero["seed"] == 0
+    assert zero["seed_source"] == "fixed"
 
 
 def test_greedy_locks_argmax(tetris_mods):

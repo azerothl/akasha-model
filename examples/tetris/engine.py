@@ -14,6 +14,7 @@ from typing import Iterable, Sequence
 
 WIDTH = 10
 HEIGHT = 20
+# Standard Tetris spawn: origin column 3 on a 10-wide well (not random X).
 SPAWN_COL = 3
 SPAWN_ROW = 0
 
@@ -169,7 +170,7 @@ def score_for_soft_drop(rows: int) -> int:
 
 
 def spawn_piece(board: Sequence[Sequence[str | None]], piece: str) -> ActivePiece | None:
-    """Spawn at the standard column; return None if blocked (game over)."""
+    """Spawn at the standard column (``SPAWN_COL``); return None if blocked."""
     if piece not in SHAPES:
         raise ValueError(f"unknown piece {piece!r}")
     active = ActivePiece(piece, 0, SPAWN_COL, SPAWN_ROW)
@@ -509,7 +510,10 @@ def plan_approach(
 
 
 class SevenBag:
-    """Deterministic 7-bag with an explicit seed sequence for demos."""
+    """Deterministic 7-bag: same seed yields the same type sequence.
+
+    ``play.py`` supplies a fresh seed by default; pass ``--seed N`` to replay.
+    """
 
     def __init__(self, seed: int = 0) -> None:
         self._seed = seed

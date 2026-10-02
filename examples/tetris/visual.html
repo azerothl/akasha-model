@@ -188,6 +188,16 @@ body { padding: 24px 16px 56px; }
   margin-top: 2px;
   font-variant-numeric: tabular-nums;
 }
+.hud-line {
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.03);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
 .tempo {
   width: 100%;
   margin-top: 2px;
@@ -434,6 +444,7 @@ body { padding: 24px 16px 56px; }
           <div>Lines<strong id="stat-lines">0</strong></div>
           <div>Level<strong id="stat-level">0</strong></div>
         </div>
+        <p class="hud-line" id="rng-hud"></p>
         <div class="tempo" aria-label="Drop speed">
           <div class="tempo-label">
             <span>Gravity</span>
@@ -473,15 +484,17 @@ body { padding: 24px 16px 56px; }
       </section>
     </div>
     <p class="footnote">
-      Path A heuristic softmax only — no torch / Hub. By default the locked
-      placement is <strong>sampled</strong> from the probability mass (not
-      always the top bar / argmax) so imperfect play can reach game over;
-      use <code>--greedy</code> for argmax locks. Pieces fall with real
-      gravity; drop interval shrinks as level rises. The next-piece preview
-      feeds a one-ply look-ahead into Choice. The model never invents
-      coordinates: it picks among engine-enumerated placements, and the host
-      re-checks exact cells before locking. Replay until game over, or press
-      Stop anytime.
+      Path A heuristic softmax only — no torch / Hub. Piece <strong>type</strong>
+      comes from a 7-bag (new random seed each <code>play.py</code> run unless
+      <code>--seed N</code>). Spawn X is the standard centred column, not
+      random. The locked <strong>landing</strong> is <strong>sampled</strong>
+      from the probability mass (not always the top bar / argmax) unless
+      <code>--greedy</code>. This page is one recorded run — generate again
+      for a new bag. Gravity is real; drop interval shrinks as level rises.
+      The next-piece preview feeds a one-ply look-ahead. The model never
+      invents coordinates: it picks among engine-enumerated placements, and
+      the host re-checks exact cells before locking. Replay until game over,
+      or press Stop anytime.
     </p>
   </div>
 <script>
@@ -526,17 +539,21 @@ function initMeta() {
   const meta = document.getElementById("meta");
   const stop = DATA.stop_reason || (DATA.game_over ? "game_over" : "complete");
   const lockMode = DATA.sample_locks === false ? "greedy locks" : "sampled locks";
+  const seedSrc = DATA.seed_source === "fixed" ? "fixed" : "this run";
   meta.replaceChildren(
     chip(`path ${DATA.path}`),
     chip(DATA.scorer || "heuristic"),
     chip(DATA.mode || "realtime"),
     chip(lockMode),
     chip(`${DATA.steps.length} pieces`),
-    chip(`seed ${DATA.seed}`),
+    chip(`seed ${DATA.seed} (${seedSrc})`),
     chip(`score ${DATA.final_score}`),
     chip(`level ${DATA.final_level ?? 0}`),
     chip(stop.replace("_", " ")),
   );
+  const hud = document.getElementById("rng-hud");
+  hud.textContent = DATA.rng_hud ||
+    "Type: 7-bag · spawn: standard column (not random X) · lock: softmax sample";
   boardEl.replaceChildren();
   for (let i = 0; i < 200; i++) {
     const cell = document.createElement("div");
@@ -631,8 +648,9 @@ function renderBars(step) {
   } else if (sampled) {
     sampleNote.hidden = false;
     sampleNote.innerHTML =
-      "Locks are <strong>sampled</strong> from these probabilities " +
-      "(seeded). Highlight = locked draw; it may match argmax by chance.";
+      "Locks are <strong>sampled</strong> from these probabilities. " +
+      "Highlight = locked draw; it may match argmax by chance. " +
+      "Piece types use this run's 7-bag seed, not a fixed demo sequence.";
   } else {
     sampleNote.hidden = false;
     sampleNote.innerHTML =
