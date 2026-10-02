@@ -282,6 +282,20 @@ a:hover {
   }
 }
 
+@media (max-width: 899px) {
+  .hero-atmosphere {
+    background:
+      radial-gradient(ellipse 80% 50% at 10% 0%, rgba(15, 107, 92, 0.14), transparent 55%),
+      radial-gradient(ellipse 60% 40% at 100% 20%, rgba(90, 120, 110, 0.12), transparent 50%),
+      linear-gradient(165deg, rgba(232, 239, 233, 0.95), rgba(242, 246, 243, 0.9));
+    animation: none;
+  }
+
+  .hero-visual {
+    margin-top: 0.5rem;
+  }
+}
+
 @media (min-width: 900px) {
   .hero {
     grid-template-columns: minmax(20rem, 0.95fr) minmax(22rem, 1.15fr);
