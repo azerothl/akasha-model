@@ -8,6 +8,7 @@ stored here — only JSON descriptors and typed questions.
 | [`sample_questions.jsonl`](sample_questions.jsonl) | One multitask row: Choice preset, Score gain/pan, Noul masking |
 | [`presets.v1.json`](presets.v1.json) | Versioned MixPresetCatalog (levels → dB / pan / EQ / compressor) |
 | [`proposal_demo.py`](proposal_demo.py) | Confirmable batch + undo + audit envelope (no DAW apply) |
+| Dataset | [`docs/mix-dataset.md`](../../docs/mix-dataset.md) — `scripts/generate_mix_dataset.py` |
 | Contract | [`docs/contracts/mix-descriptors.md`](../../docs/contracts/mix-descriptors.md) |
 | Presets | [`docs/contracts/mix-presets.md`](../../docs/contracts/mix-presets.md) |
 
