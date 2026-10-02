@@ -138,6 +138,7 @@ def test_play_trace_and_html(tetris_mods):
         assert step["choice"]["selected"]
         assert "rot=" in step["choice"]["selected"]
         assert step["choice"]["sampled"] is True
+        assert step["choice"]["argmax"]
         assert step["host"]["verified"] is True
         assert "probabilities" in step["choice"]
         assert step.get("next_piece") in {"I", "O", "T", "S", "Z", "J", "L"}
@@ -159,6 +160,41 @@ def test_play_trace_and_html(tetris_mods):
     assert "Placement probabilities" in html
     assert "next-grid" in html
     assert "rot=" in html
+    assert "sampled ≠ argmax" in html
+    assert "sample-note" in html
+    assert "sampled locks" in html or "sample_locks" in html
+
+
+def test_sampling_can_differ_from_argmax(tetris_mods):
+    _engine, _scorer, play = tetris_mods
+    # Seeded sample often locks a non-argmax placement within a short run.
+    trace = play.run_game(pieces=20, seed=0, temperature=4.0, sample=True)
+    locked = [step for step in trace["steps"] if step["host"]["status"] == "locked"]
+    assert locked
+    differs = [
+        step for step in locked
+        if step["choice"]["selected"] != step["choice"]["argmax"]
+    ]
+    assert differs, "expected at least one sampled lock ≠ argmax"
+    step = differs[0]
+    assert step["choice"]["sampled"] is True
+    assert step["choice"]["selected"] in step["choice"]["all_probabilities"]
+    assert step["choice"]["argmax"] in step["choice"]["all_probabilities"]
+    assert (
+        step["choice"]["all_probabilities"][step["choice"]["argmax"]]
+        >= step["choice"]["all_probabilities"][step["choice"]["selected"]]
+    )
+
+
+def test_greedy_locks_argmax(tetris_mods):
+    _engine, _scorer, play = tetris_mods
+    trace = play.run_game(pieces=5, seed=4, sample=False)
+    assert trace["sample_locks"] is False
+    for step in trace["steps"]:
+        if step["host"]["status"] != "locked":
+            continue
+        assert step["choice"]["sampled"] is False
+        assert step["choice"]["selected"] == step["choice"]["argmax"]
 
 
 def test_default_runs_until_game_over_or_safety(tetris_mods):

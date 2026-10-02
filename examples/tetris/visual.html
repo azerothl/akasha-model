@@ -275,11 +275,35 @@ body { padding: 24px 16px 56px; }
   padding: 4px 6px;
   margin: 0 -6px;
 }
+.bar-row.argmax:not(.selected) {
+  background: rgba(60, 184, 199, 0.06);
+  outline: 1px dashed rgba(60, 184, 199, 0.35);
+  padding: 4px 6px;
+  margin: 0 -6px;
+}
 .bar-label {
   font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   font-size: 0.78rem;
   line-height: 1.25;
   color: var(--ink);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+.bar-tag {
+  font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ready);
+  border: 1px solid rgba(69, 201, 133, 0.45);
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+.bar-tag.argmax {
+  color: var(--accent);
+  border-color: rgba(60, 184, 199, 0.45);
 }
 .track {
   height: 16px;
@@ -296,11 +320,27 @@ body { padding: 24px 16px 56px; }
 .bar-row.selected .fill {
   background: linear-gradient(90deg, var(--ready), var(--ready-fill));
 }
+.bar-row.argmax:not(.selected) .fill {
+  background: linear-gradient(90deg, #2a9eab, var(--accent));
+}
 .pct {
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--ink);
+}
+.sample-note {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px dashed rgba(60, 184, 199, 0.35);
+  background: rgba(60, 184, 199, 0.06);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+.sample-note strong {
+  color: var(--ink);
+  font-weight: 600;
 }
 .verdict {
   margin-top: 14px;
@@ -417,6 +457,7 @@ body { padding: 24px 16px 56px; }
           <h3>Placement probabilities</h3>
           <span id="bars-caption">top alternatives</span>
         </div>
+        <p class="sample-note" id="sample-note" hidden></p>
         <div class="bars" id="bars" aria-label="Placement probabilities"></div>
         <div class="verdict" id="verdict" data-status="locked">
           <p class="status" id="verdict-status"></p>
@@ -432,7 +473,10 @@ body { padding: 24px 16px 56px; }
       </section>
     </div>
     <p class="footnote">
-      Path A heuristic softmax only — no torch / Hub. Pieces fall with real
+      Path A heuristic softmax only — no torch / Hub. By default the locked
+      placement is <strong>sampled</strong> from the probability mass (not
+      always the top bar / argmax) so imperfect play can reach game over;
+      use <code>--greedy</code> for argmax locks. Pieces fall with real
       gravity; drop interval shrinks as level rises. The next-piece preview
       feeds a one-ply look-ahead into Choice. The model never invents
       coordinates: it picks among engine-enumerated placements, and the host
@@ -481,10 +525,12 @@ function initMeta() {
     "Bar labels are legal locks: piece, rotation (0/R/2/L), leftmost column.";
   const meta = document.getElementById("meta");
   const stop = DATA.stop_reason || (DATA.game_over ? "game_over" : "complete");
+  const lockMode = DATA.sample_locks === false ? "greedy locks" : "sampled locks";
   meta.replaceChildren(
     chip(`path ${DATA.path}`),
     chip(DATA.scorer || "heuristic"),
     chip(DATA.mode || "realtime"),
+    chip(lockMode),
     chip(`${DATA.steps.length} pieces`),
     chip(`seed ${DATA.seed}`),
     chip(`score ${DATA.final_score}`),
@@ -555,26 +601,67 @@ function setTempo(dropMs) {
 function renderBars(step) {
   const choice = step.choice || {};
   const selected = choice.selected;
+  const argmax = choice.argmax || null;
+  const sampled = !!choice.sampled;
   const probs = choice.probabilities || {};
   barsEl.replaceChildren();
   const entries = Object.entries(probs);
   const caption = document.getElementById("bars-caption");
+  const sampleNote = document.getElementById("sample-note");
+  const differs = !!(sampled && selected && argmax && selected !== argmax);
   if (!entries.length) {
     caption.textContent = "no alternatives";
+    sampleNote.hidden = true;
+    sampleNote.textContent = "";
     const empty = document.createElement("p");
     empty.className = "reason";
     empty.textContent = "No Choice — fewer than two legal placements.";
     barsEl.appendChild(empty);
     return;
   }
-  caption.textContent = `${entries.length} of ${(step.candidates || []).length} legal locks`;
+  caption.textContent = differs
+    ? `${entries.length} of ${(step.candidates || []).length} · sampled ≠ argmax`
+    : `${entries.length} of ${(step.candidates || []).length} legal locks`;
+  if (differs) {
+    sampleNote.hidden = false;
+    sampleNote.innerHTML =
+      "<strong>Sampled ≠ argmax.</strong> Green = locked draw from the " +
+      "softmax; dashed cyan = highest probability (not locked). " +
+      "Default play samples; <code>--greedy</code> always locks argmax.";
+  } else if (sampled) {
+    sampleNote.hidden = false;
+    sampleNote.innerHTML =
+      "Locks are <strong>sampled</strong> from these probabilities " +
+      "(seeded). Highlight = locked draw; it may match argmax by chance.";
+  } else {
+    sampleNote.hidden = false;
+    sampleNote.innerHTML =
+      "Greedy mode: highlight is the <strong>argmax</strong> lock.";
+  }
   for (const [name, value] of entries) {
+    const isSelected = name === selected;
+    const isArgmax = name === argmax;
     const row = document.createElement("div");
-    row.className = "bar-row" + (name === selected ? " selected" : "");
+    row.className = "bar-row"
+      + (isSelected ? " selected" : "")
+      + (isArgmax ? " argmax" : "");
     const label = document.createElement("span");
     label.className = "bar-label";
-    label.textContent = name;
     label.title = name;
+    const nameEl = document.createElement("span");
+    nameEl.textContent = name;
+    label.appendChild(nameEl);
+    if (isSelected) {
+      const tag = document.createElement("span");
+      tag.className = "bar-tag";
+      tag.textContent = sampled && !isArgmax ? "locked (sampled)" : "locked";
+      label.appendChild(tag);
+    } else if (isArgmax && differs) {
+      const tag = document.createElement("span");
+      tag.className = "bar-tag argmax";
+      tag.textContent = "argmax";
+      label.appendChild(tag);
+    }
     const track = document.createElement("div");
     track.className = "track";
     const fill = document.createElement("div");
@@ -603,14 +690,21 @@ function renderVerdict(step) {
   document.getElementById("verdict-reason").textContent = host.reason || "";
   const kv = document.getElementById("verdict-kv");
   kv.replaceChildren();
+  const argmax = choice.argmax || null;
+  const sampledDiffers = !!(choice.sampled && selected && argmax && selected !== argmax);
   const rows = [
     ["piece #", String(step.index + 1)],
     ["active", step.piece || "—"],
     ["next", step.next_piece || "—"],
     ["candidates", String((step.candidates || []).length)],
     ["selected", selected || "—"],
-    ["argmax", choice.argmax && choice.argmax !== selected ? choice.argmax : "—"],
-    ["sampled", choice.sampled ? "yes" : "no"],
+    ["argmax", argmax || "—"],
+    [
+      "sampled",
+      choice.sampled
+        ? (sampledDiffers ? "yes · ≠ argmax" : "yes")
+        : "no (greedy)",
+    ],
     ["confidence", choice.confidence != null ? choice.confidence.toFixed(3) : "—"],
     ["verified", host.verified ? "yes" : "no"],
     ["level", String(step.level ?? 0)],

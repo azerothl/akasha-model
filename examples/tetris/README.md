@@ -12,7 +12,9 @@ still picks among engine-enumerated legal locks (probability bars on the side).
 
 The game runs **until game over** (or you press **Stop** in the HTML replay).
 Locks are **sampled** from the Choice probabilities (seeded) so imperfect play
-can stack out; `--greedy` forces argmax. `--pieces N` remains for short CI runs.
+can stack out — the locked row is therefore **not always the highest bar**
+(`sampled ≠ argmax`). Use `--greedy` to always lock argmax. `--pieces N`
+remains for short CI runs.
 
 No torch / Hub. Scoring is a deterministic board heuristic turned into a
 softmax — good enough for an offline game. A future MASK / Path B scorer
