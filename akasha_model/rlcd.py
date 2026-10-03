@@ -167,6 +167,11 @@ def main() -> None:
     parser.add_argument("--dropout", type=float, default=0.1)
     parser.add_argument("--device", choices=("auto", "cpu", "mps", "cuda"), default="auto")
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument(
+        "--mix-compact-state",
+        action="store_true",
+        help="render mix-descriptor JSON as mix-compact-v1 text so dB/LUFS survive MASK clipping",
+    )
     args = parser.parse_args()
     if args.group_size < 1:
         parser.error("--group-size must be at least 1")
@@ -190,6 +195,7 @@ def main() -> None:
         "type_balance": args.type_balance,
         "mask_layout": args.mask_layout,
         "layout_mix": args.layout_mix if args.mask_layout == "mix" else 0.0,
+        "mix_compact_state": bool(args.mix_compact_state),
         "temperature": [1.0, 1.0, 1.0],
     }
     if args.init:
@@ -199,25 +205,32 @@ def main() -> None:
             policy_weight=args.policy_weight, type_balance=args.type_balance,
             target_mode=args.target_mode, mask_layout=args.mask_layout,
             layout_mix=args.layout_mix if args.mask_layout == "mix" else 0.0,
+            mix_compact_state=bool(args.mix_compact_state),
         )
     else:
         model, tokenizer = make_decision_model(config, device)
         config["target_mode"] = args.target_mode
+    compact = bool(config.get("mix_compact_state"))
     collator = MaskCollator(
         tokenizer, args.max_len, args.head_max_len, args.option_max_len,
         args.group_size, args.seed, args.target_mode,
         layout=args.mask_layout,
         layout_mix=args.layout_mix if args.mask_layout == "mix" else 0.0,
+        mix_compact_state=compact,
     )
     train_loader = DataLoader(
         MultiQuestionDataset(args.train), batch_size=args.batch_size,
         shuffle=True, collate_fn=collator,
     )
+    eval_layout = (
+        "schema_first" if args.mask_layout == "mix" else args.mask_layout
+    )
     validation_loader = DataLoader(
         MultiQuestionDataset(args.validation), batch_size=args.batch_size,
         collate_fn=MaskCollator(
             tokenizer, args.max_len, args.head_max_len, args.option_max_len,
-            1, args.seed, args.target_mode, layout="schema_first",
+            1, args.seed, args.target_mode, layout=eval_layout,
+            mix_compact_state=compact,
         ),
     )
     optimiser = _build_optimiser(model, args)

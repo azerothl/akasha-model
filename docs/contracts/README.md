@@ -11,6 +11,7 @@ bridge into Path A without scraping Python dataclasses.
 | Audit envelope | [`akasha_model/schemas/gate-audit-envelope.schema.json`](../../akasha_model/schemas/gate-audit-envelope.schema.json) |
 | Mix descriptors | [`mix-descriptors.md`](mix-descriptors.md) · [`akasha_model/schemas/mix-descriptors.schema.json`](../../akasha_model/schemas/mix-descriptors.schema.json) |
 | Mix presets | [`mix-presets.md`](mix-presets.md) · [`examples/mix/presets.v1.json`](../../examples/mix/presets.v1.json) |
+| Mix Option B labels | [`mix-option-b.md`](mix-option-b.md) · [`akasha_model/schemas/mix-option-b-labels.schema.json`](../../akasha_model/schemas/mix-option-b-labels.schema.json) |
 | Python helpers | `akasha_model.wire` + `akasha_model.audit` (+ `akasha_model.mix` / `mix_presets`) |
 | Golden fixtures | [`tests/contracts/fixtures/`](../../tests/contracts/fixtures/) |
 

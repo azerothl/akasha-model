@@ -11,6 +11,8 @@ stored here — only JSON descriptors and typed questions.
 | Number sensitivity | [`docs/mix-number-sensitivity.md`](../../docs/mix-number-sensitivity.md) · [`reports/mix_number_sensitivity.md`](../../reports/mix_number_sensitivity.md) |
 | Offline Path B | [`docs/path-b-offline.md`](../../docs/path-b-offline.md) |
 | Dataset | [`docs/mix-dataset.md`](../../docs/mix-dataset.md) — `scripts/generate_mix_dataset.py` |
+| Option B labels | [`docs/contracts/mix-option-b.md`](../../docs/contracts/mix-option-b.md) — import only, no shipped human labels |
+| Mix MASK train | [`docs/mix-mask-train.md`](../../docs/mix-mask-train.md) — `gate-tiny.pt` ≠ mix |
 | Licences | [`docs/licences-poids.md`](../../docs/licences-poids.md) |
 | Contract | [`docs/contracts/mix-descriptors.md`](../../docs/contracts/mix-descriptors.md) |
 | Presets | [`docs/contracts/mix-presets.md`](../../docs/contracts/mix-presets.md) |

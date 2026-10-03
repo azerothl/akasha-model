@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/azerothl/akasha-model/schemas/mix-option-b-labels.schema.json",
+  "title": "MixOptionBLabelRow",
+  "description": "Human mix labels (Option B) over T1 mix descriptors and T2 Choice/Score/Noul questions. No audio. Format fixtures must set annotation_status=format_only and must not be used as training labels.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "context",
+    "questions",
+    "context_key",
+    "source",
+    "licence",
+    "label_licence",
+    "label_mode"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "context_key": { "type": "string", "minLength": 1 },
+    "source": { "type": "string", "minLength": 1 },
+    "licence": { "type": "string", "minLength": 1 },
+    "label_licence": { "type": "string", "minLength": 1 },
+    "descriptor_licence": { "type": "string", "minLength": 1 },
+    "label_mode": { "const": "option_b_human" },
+    "annotator_hash": {
+      "type": "string",
+      "minLength": 8,
+      "description": "Non-identifying hash of the annotator id. Do not store emails or names."
+    },
+    "annotation_status": {
+      "type": "string",
+      "enum": ["human", "format_only"],
+      "description": "human = real annotator labels. format_only = schema fixture, never train."
+    },
+    "context": {
+      "$ref": "https://github.com/azerothl/akasha-model/schemas/mix-descriptors.schema.json"
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/question" }
+    }
+  },
+  "$defs": {
+    "question": {
+      "type": "object",
+      "required": ["id", "type", "instructions", "label"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["choice", "score", "noul"] },
+        "instructions": { "type": "string", "minLength": 1 },
+        "label": { "type": "integer", "minimum": 0 },
+        "options": { "type": "array" },
+        "levels": { "type": "array" },
+        "criteria": { "type": "object" }
+      }
+    }
+  }
+}

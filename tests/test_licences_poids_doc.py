@@ -15,3 +15,5 @@ def test_licences_doc_exists_and_covers_encoders() -> None:
     assert "Gabriel" in text
     assert "pending" in text.lower()
     assert "CC0-1.0" in text or "synthétique" in text.lower()
+    assert "un checkpoint mix" in text
+    assert "Option B" in text

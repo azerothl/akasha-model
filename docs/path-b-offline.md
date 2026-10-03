@@ -5,7 +5,7 @@
 | Format | Décision | Motif |
 |--------|----------|-------|
 | Torch `.pt` local | **Retenu** pour l’embarqué v1 | Checkpoint démo `examples/gate/checkpoints/gate-tiny.pt` et futurs poids maison ; chargement via `akasha_model.offline` |
-| ONNX / GGUF | **Pas d’export MASK maintenant** | Pas encore de checkpoint mix entraîné (T4 GPU/BERT bloqué) ; la tête multitask + collator byte n’a pas de graphe ONNX figé testé. Revoir après un checkpoint mix stable |
+| ONNX / GGUF | **Toujours bloqué sur T8 (#82)** | Recette MASK mix : [`mix-mask-train.md`](mix-mask-train.md). Script d’export [`scripts/export_mix_mask_onnx.py`](../scripts/export_mix_mask_onnx.py) refuse `gate-tiny.pt` et tout checkpoint qui n’a pas passé le juge T4. Le graphe tiny MASK **peut** s’exporter si le paquet optionnel `onnx` est installé ; ce n’est pas l’acceptance T10. GGUF : hors sujet (pas un LLM llama.cpp). Servir en `.pt` local via `akasha_model.offline` jusqu’à un mix MASK publiable. |
 
 Cette décision est documentée pour l’acceptance « export **ou** décision de ne pas exporter ».
 

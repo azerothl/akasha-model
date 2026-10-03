@@ -14,7 +14,13 @@ are produced by the documented heuristics in the generator (`rule_preset`,
 **What tests measure:** agreement with these written rules — **not** mix quality
 or human preference.
 
-Option B (human annotations) is not implemented in this ticket.
+Option B (human annotations): schema + import pipeline in
+[`docs/contracts/mix-option-b.md`](contracts/mix-option-b.md). **No human labels
+are shipped.** Format fixtures are `annotation_status=format_only` and must not
+be used as training data.
+
+MASK mix training recipe (T8): [`docs/mix-mask-train.md`](mix-mask-train.md).
+`gate-tiny.pt` is not a mix checkpoint.
 
 ## Provenance fields (per row)
 

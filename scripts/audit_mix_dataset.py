@@ -14,6 +14,8 @@ from pathlib import Path
 
 REQUIRED_SPLITS = ("train.jsonl", "validation.jsonl", "test.jsonl")
 REQUIRED_FIELDS = ("source", "licence", "label_licence", "descriptor_licence", "context_key")
+AUDIO_KEYS = ("audio", "wav", "waveform", "stems", "samples", "pcm")
+ALLOWED_LABEL_MODES = ("option_a_written_rules", "option_b_human")
 
 
 def _load(path: Path) -> list[dict]:
@@ -47,6 +49,15 @@ def main() -> int:
                     break
             if "context" not in row:
                 critical.append(f"missing_context:{name}:{index}")
+            for audio_key in AUDIO_KEYS:
+                if audio_key in row or (
+                    isinstance(row.get("context"), dict) and audio_key in row["context"]
+                ):
+                    critical.append(f"audio_payload:{name}:{index}:{audio_key}")
+                    break
+            mode = row.get("label_mode")
+            if mode is not None and mode not in ALLOWED_LABEL_MODES:
+                critical.append(f"bad_label_mode:{name}:{index}:{mode}")
 
     train_keys = {row["context_key"] for row in splits["train.jsonl"] if "context_key" in row}
     for name in ("validation.jsonl", "test.jsonl"):

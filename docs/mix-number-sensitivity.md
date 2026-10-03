@@ -33,7 +33,16 @@ Questions and labels stay fixed so a drop vs baseline indicates **number/context
 | `majority_prior` | Constant prior (balanced / unchanged / not-masked) |
 | `mask:<path>` | MASK `DecisionModel` checkpoint (`tiny` or HF `bert-base-uncased`) |
 
-Train local checkpoints (not committed; `runs/` is gitignored):
+Train local checkpoints (not committed; `runs/` is gitignored). Prefer the T8
+recipe ([`docs/mix-mask-train.md`](mix-mask-train.md)) with `--mix-compact-state`
+so numeric descriptors are not clipped. `gate-tiny.pt` is **not** a mix MASK.
+
+```sh
+python scripts/train_mix_mask.py --data data/mix_synth --device cpu \
+  --output runs/mix-mask-tiny.pt
+```
+
+Legacy T4 commands (raw JSON state; measured as majority prior):
 
 ```sh
 python scripts/generate_mix_dataset.py --output data/mix_synth --rows 400

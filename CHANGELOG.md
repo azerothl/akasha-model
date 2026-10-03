@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Mix MASK T8 training recipe (`scripts/train_mix_mask.py`, `--mix-compact-state`,
+  [`docs/mix-mask-train.md`](docs/mix-mask-train.md)): compact dB/LUFS state so
+  tiny MASK can see numbers; T4 judge vs majority prior. Weights stay in `runs/`.
+  `gate-tiny.pt` is explicitly not a mix checkpoint (#82).
+- Mix Option B import pipeline (human labels schema, anti-leak audit, no audio,
+  no invented annotator rows) (#83).
+- ONNX export scaffold `scripts/export_mix_mask_onnx.py` that waits on a
+  number-sensitive mix MASK (#84).
+
 ## [0.3.0] - 2026-10-02
 
 Second tagged release: mix Path A surface, first-run demos, presentation site,
