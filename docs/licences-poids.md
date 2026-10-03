@@ -24,6 +24,8 @@ du package). Ce dépôt ne redistribue pas BERT / ModernBERT dans le wheel PyPI.
 | `examples/gate/checkpoints/gate-tiny.pt` | Tiny multitask scorer (démo gate) | MIT (dérivé du code maison) | Données **synthétiques** générées localement (scénarios scriptés gate / multitask) | Synthétique — **pas** un corpus tiers ; pas de claim « données libres redistribuables » au-delà du générateur maison |
 | `examples/checkpoints/*.pt` (Doom / chess / joint) | Scorer vision + table d’options | MIT (code) + poids entraînés ici | Trajectoires VizDoom / parties chess générées localement ; Stockfish pour labels chess | **Environnements et moteurs** : respecter les licences VizDoom / Stockfish / FreeDoom ; **ne pas** redistribuer captures ou films avec audio copyrighté (`AGENTS.md`) |
 | Jeu mix synthétique (`scripts/generate_mix_dataset.py`) | N/A (pas de poids) | — | Descripteurs + labels **Option A** (règles écrites), `CC0-1.0` déclaré par ligne | Synthétique ; mesure = accord aux règles ≠ qualité de mix ([`docs/mix-dataset.md`](mix-dataset.md)) |
+| Mix MASK T8 (`runs/mix-mask-tiny.pt`, hors git) | Tiny MASK (`DecisionModel`) | MIT (code maison) si entraîné sur Option A CC0 | Option A synthétique, recette [`docs/mix-mask-train.md`](mix-mask-train.md) | **Pas publiable** tant que T4 ne bat pas le *majority prior*. `gate-tiny.pt` **n’est pas** un checkpoint mix. |
+| Mix Option B (labels humains) | N/A tant qu’aucun corpus n’est importé | — | Schéma + import [`docs/contracts/mix-option-b.md`](contracts/mix-option-b.md) ; **pas** de labels inventés dans le dépôt | Renseigner `source` / `label_licence` **avant** tout poids ; fixtures `format_only` interdits à l’entraînement |
 
 ## Jeux de données tiers (non commités)
 

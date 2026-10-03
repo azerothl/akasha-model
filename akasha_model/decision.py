@@ -9,6 +9,7 @@ from typing import Any
 import torch
 from torch import nn
 
+from .mix import format_compact_mix_state, looks_like_mix_descriptors
 from .sequence import (
     DEFAULT_LAYOUT,
     LAYOUTS,
@@ -148,6 +149,7 @@ class MaskCollator:
         target_mode: str = "provided",
         layout: str = DEFAULT_LAYOUT,
         layout_mix: float = 0.0,
+        mix_compact_state: bool = False,
     ) -> None:
         if target_mode not in {"provided", "one_hot"}:
             raise ValueError("target_mode must be provided or one_hot")
@@ -167,6 +169,7 @@ class MaskCollator:
         self.layout = layout
         # Probability of drawing state_first when layout == "mix".
         self.layout_mix = float(layout_mix) if layout == "mix" else 0.0
+        self.mix_compact_state = bool(mix_compact_state)
 
     def _pick_layout(self, example_index: int, question_index: int) -> str:
         if self.layout != "mix":
@@ -185,8 +188,11 @@ class MaskCollator:
         chosen = layout if layout is not None else (
             self.layout if self.layout != "mix" else DEFAULT_LAYOUT
         )
+        encoded_state = state
+        if self.mix_compact_state and looks_like_mix_descriptors(state):
+            encoded_state = format_compact_mix_state(state)
         ids, markers = build_sequence(
-            self.tokenizer, state, question, self.max_len, self.head_max_len,
+            self.tokenizer, encoded_state, question, self.max_len, self.head_max_len,
             option_order, self.option_max_len, layout=chosen,
         )
         if self.target_mode == "one_hot":

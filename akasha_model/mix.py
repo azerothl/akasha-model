@@ -246,6 +246,140 @@ def mix_schema_path() -> Path:
     return Path(__file__).resolve().parent / "schemas" / "mix-descriptors.schema.json"
 
 
+def mix_option_b_schema_path() -> Path:
+    return Path(__file__).resolve().parent / "schemas" / "mix-option-b-labels.schema.json"
+
+
+COMPACT_MIX_STATE_VERSION = "mix-compact-v1"
+OPTION_A_LABEL_MODE = "option_a_written_rules"
+OPTION_B_LABEL_MODE = "option_b_human"
+AUDIO_PAYLOAD_KEYS = ("audio", "wav", "waveform", "stems", "samples", "pcm")
+
+
+def looks_like_mix_descriptors(state: Any) -> bool:
+    return (
+        isinstance(state, Mapping)
+        and "tracks" in state
+        and state.get("schema_version") == MIX_SCHEMA_VERSION
+    )
+
+
+def _compact_number(value: Any) -> str:
+    if value is None or isinstance(value, bool) or not isinstance(value, (int, float)):
+        return "null"
+    number = float(value)
+    if not math.isfinite(number):
+        return "null"
+    if number.is_integer():
+        return str(int(number))
+    return f"{number:.4g}"
+
+
+def _compact_bands(value: Any) -> str:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        return "null"
+    return ",".join(_compact_number(item) for item in value)
+
+
+def format_compact_mix_state(state: Mapping[str, Any] | MixSessionState) -> str:
+    """Short numeric-first MASK state. Tolerates T4 nulls; does not re-validate bounds.
+
+    Full JSON descriptors are too long for schema-first byte sequences; this
+    keeps dB / LUFS / masking tokens visible. Host contracts stay on schema v1 JSON.
+    """
+    payload = state.to_dict() if isinstance(state, MixSessionState) else dict(state)
+    session = str(payload.get("session_id") or "")
+    sample_rate = payload.get("sample_rate_hz")
+    lines = [
+        f"{COMPACT_MIX_STATE_VERSION} session={session or 'unknown'} "
+        f"sr={_compact_number(sample_rate)}"
+    ]
+    for track in payload.get("tracks") or ():
+        if not isinstance(track, Mapping):
+            continue
+        lines.append(
+            "track {id} rms_db={rms} lufs={lufs} centroid_hz={cent} "
+            "bands_db={bands} crest_db={crest} corr={corr}".format(
+                id=track.get("track_id") or "unknown",
+                rms=_compact_number(track.get("rms_db")),
+                lufs=_compact_number(track.get("lufs")),
+                cent=_compact_number(track.get("spectral_centroid_hz")),
+                bands=_compact_bands(track.get("band_energies_db")),
+                crest=_compact_number(track.get("crest_factor_db")),
+                corr=_compact_number(track.get("stereo_correlation")),
+            )
+        )
+    for pair in payload.get("pair_masking") or ():
+        if not isinstance(pair, Mapping):
+            continue
+        lines.append(
+            "mask {masker}>{maskee} {index}".format(
+                masker=pair.get("masker_id") or "unknown",
+                maskee=pair.get("maskee_id") or "unknown",
+                index=_compact_number(pair.get("masking_index")),
+            )
+        )
+    return "\n".join(lines)
+
+
+def majority_sensitivity_verdict(report: dict[str, Any]) -> dict[str, Any]:
+    """T8/T4 judge: MASK must beat majority prior and drop when numbers change."""
+    encoders = report.get("encoders") or {}
+    majority = encoders.get("majority_prior") or {}
+    mask_name = next((name for name in encoders if str(name).startswith("mask:")), None)
+    if mask_name is None:
+        return {"ok": False, "reason": "no mask encoder in report"}
+    if "baseline" not in majority:
+        return {"ok": False, "reason": "majority_prior missing from report"}
+    mask = encoders[mask_name]
+    gaps: dict[str, Any] = {}
+    sensitive = False
+    beats_majority = False
+    for head in ("choice", "score", "noul"):
+        maj_base = float(majority["baseline"]["heads"][head]["accuracy"])
+        base = float(mask["baseline"]["heads"][head]["accuracy"])
+        removed = float(mask["numbers_removed"]["heads"][head]["accuracy"])
+        perturbed = float(mask["numbers_perturbed"]["heads"][head]["accuracy"])
+        gap_vs_majority = base - maj_base
+        drop_removed = base - removed
+        drop_perturbed = base - perturbed
+        gaps[head] = {
+            "baseline": base,
+            "majority_baseline": maj_base,
+            "gap_vs_majority": round(gap_vs_majority, 4),
+            "drop_numbers_removed": round(drop_removed, 4),
+            "drop_numbers_perturbed": round(drop_perturbed, 4),
+        }
+        if gap_vs_majority >= 0.08:
+            beats_majority = True
+        if gap_vs_majority >= 0.08 and max(drop_removed, drop_perturbed) >= 0.08:
+            sensitive = True
+    return {
+        "ok": sensitive,
+        "beats_majority": beats_majority,
+        "encoder": mask_name,
+        "heads": gaps,
+        "reason": (
+            "clear number sensitivity vs majority prior"
+            if sensitive
+            else "still at or near majority prior / no number drop — not a publishable mix MASK"
+        ),
+    }
+
+
+def row_has_audio_payload(row: Mapping[str, Any]) -> bool:
+    """Refuse committed or inline audio on mix JSONL rows."""
+    for key in AUDIO_PAYLOAD_KEYS:
+        if key in row:
+            return True
+    context = row.get("context")
+    if isinstance(context, Mapping):
+        for key in AUDIO_PAYLOAD_KEYS:
+            if key in context:
+                return True
+    return False
+
+
 def example_mix_state() -> MixSessionState:
     """Fixed fixture used by docs and tests (no audio)."""
     return MixSessionState(
@@ -416,22 +550,31 @@ def load_mix_jsonl(path: str | Path) -> list[DecisionRequest]:
 
 
 __all__ = [
+    "AUDIO_PAYLOAD_KEYS",
     "BAND_COUNT",
     "BAND_NAMES",
+    "COMPACT_MIX_STATE_VERSION",
     "MIX_SCHEMA_VERSION",
+    "OPTION_A_LABEL_MODE",
+    "OPTION_B_LABEL_MODE",
     "MixSessionState",
     "PairMasking",
     "TrackDescriptors",
     "example_decision_request",
     "example_mix_questions",
     "example_mix_state",
+    "format_compact_mix_state",
     "load_mix_jsonl",
+    "looks_like_mix_descriptors",
+    "majority_sensitivity_verdict",
     "mix_decision_request_from_row",
+    "mix_option_b_schema_path",
     "mix_schema_path",
     "question_from_jsonl_item",
     "round_corr",
     "round_db",
     "round_hz",
     "round_masking",
+    "row_has_audio_payload",
     "validate_mix_state",
 ]

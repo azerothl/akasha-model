@@ -164,12 +164,16 @@ def evaluate_typed_records(
     model, tokenizer, rows: list[dict[str, Any]], device: torch.device,
     max_len: int, head_max_len: int, option_max_len: int, batch_size: int = 8,
     permutations: int = 1, seed: int = 7,
+    layout: str = "schema_first",
+    mix_compact_state: bool = False,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     if permutations < 1:
         raise ValueError("permutations must be at least one")
+    eval_layout = "schema_first" if layout == "mix" else layout
     collator = MaskCollator(
         tokenizer, max_len, head_max_len, option_max_len,
-        group_size=permutations, seed=seed,
+        group_size=permutations, seed=seed, layout=eval_layout,
+        mix_compact_state=mix_compact_state,
     )
     examples = [validate_multi(row) for row in rows]
     records: list[dict[str, Any]] = []
@@ -242,10 +246,13 @@ def evaluate_typed_rows(
     model, tokenizer, rows: list[dict[str, Any]], device: torch.device,
     max_len: int, head_max_len: int, option_max_len: int, batch_size: int = 8,
     permutations: int = 1,
+    layout: str = "schema_first",
+    mix_compact_state: bool = False,
 ) -> dict[str, Any]:
     return evaluate_typed_records(
         model, tokenizer, rows, device, max_len, head_max_len, option_max_len,
-        batch_size, permutations,
+        batch_size, permutations, layout=layout,
+        mix_compact_state=mix_compact_state,
     )[0]
 
 
@@ -286,6 +293,8 @@ def main() -> None:
             model, tokenizer, rows, device,
             config.get("max_len", 768), config.get("head_max_len", 384),
             config.get("option_max_len", 48), args.batch_size, args.permutations,
+            layout=str(config.get("mask_layout", "schema_first")),
+            mix_compact_state=bool(config.get("mix_compact_state")),
         ),
         "published_comparison": PUBLISHED,
     }

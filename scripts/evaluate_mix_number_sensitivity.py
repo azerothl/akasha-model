@@ -347,6 +347,8 @@ def evaluate_mask_checkpoint(
         config.get("option_max_len", 48),
         batch_size=batch_size,
         permutations=1,
+        layout=str(config.get("mask_layout", "schema_first")),
+        mix_compact_state=bool(config.get("mix_compact_state")),
     )
     elapsed = time.perf_counter() - t0
     store: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
