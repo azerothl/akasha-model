@@ -10,7 +10,10 @@ import torch
 from torch.utils.data import DataLoader
 
 from .decision import (
-    MaskCollator, load_decision_checkpoint, make_decision_model, save_decision_checkpoint,
+    MaskCollator,
+    load_decision_checkpoint,
+    make_decision_model,
+    save_decision_checkpoint,
 )
 from .model import select_device
 from .multitask import MultiQuestionDataset
@@ -63,6 +66,7 @@ def grpo_loss(
     reward = proper_reward(
         reported, batch["target"], qtype, mask,
         spherical_weight=spherical_weight, ranked_weight=ranked_weight,
+        option_order=batch.get("option_order"),
     )
     group_size = int(batch["group_size"].reshape(-1)[0])
     grouped = reward.view(-1, group_size)

@@ -109,7 +109,9 @@ def main() -> None:
         }))
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"config": config, "state_dict": best_state}, output)
+    from .checkpoints import ARCH_SINGLE_CHOICE, stamp_payload
+
+    torch.save(stamp_payload({"config": config, "state_dict": best_state}, ARCH_SINGLE_CHOICE), output)
     print(json.dumps({"checkpoint": str(output), "best_validation_nll": best_loss}))
 
 

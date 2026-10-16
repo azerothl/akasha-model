@@ -83,6 +83,19 @@ from .mix_proposal import (
     build_mix_proposal_batch,
 )
 from .offline import MODEL_ABSENT_STATUS, ModelAbsentError, resolve_local_checkpoint
+from .checkpoints import (
+    ARCH_BYTE_MULTITASK,
+    ARCH_MASK,
+    ARCH_SINGLE_CHOICE,
+    CAPABILITIES as CHECKPOINT_CAPABILITIES,
+    FORMAT_VERSION as CHECKPOINT_FORMAT_VERSION,
+    CheckpointFormatError,
+    CheckpointInfo,
+    LoadedCheckpoint,
+    inspect_payload,
+    load_any_checkpoint,
+    stamp_payload,
+)
 
 __version__ = "0.3.0"
 
@@ -132,6 +145,10 @@ __all__ = [
     "suggest_threshold_updates", "summarize_outcomes", "validate_mix_state",
     "validate_tool_arguments",
     "verify_envelope",
+    "ARCH_BYTE_MULTITASK", "ARCH_MASK", "ARCH_SINGLE_CHOICE",
+    "CHECKPOINT_CAPABILITIES", "CHECKPOINT_FORMAT_VERSION",
+    "CheckpointFormatError", "CheckpointInfo", "LoadedCheckpoint",
+    "inspect_payload", "load_any_checkpoint", "stamp_payload",
 ]
 
 

@@ -17,6 +17,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no invented annotator rows) (#83).
 - ONNX export scaffold `scripts/export_mix_mask_onnx.py` that waits on a
   number-sensitive mix MASK (#84).
+- Unified checkpoint factory (`akasha_model.checkpoints`, `load_any_checkpoint`)
+  with versioned architecture/capability metadata for the MASK, single-choice
+  and byte-multitask families; legacy checkpoints are auto-detected and unknown
+  formats refused (#92, `docs/checkpoints.md`).
+- MASK per-type temperature calibration CLI (`akasha-mask-calibrate`): fits
+  choice/score/noul temperatures on a held-out split and writes checkpoints
+  whose config and buffer agree (#87).
+- CI lint job (ruff + mypy on the checkpoint/calibration modules) and a
+  Python 3.10/3.12 core matrix; issue templates and `SECURITY.md`.
+
+### Fixed
+
+- Ordinal `score` ranked-probability loss is now computed in canonical level
+  order: permuting displayed options in RLCD groups no longer changes the
+  loss, and far level errors cost more than adjacent ones (#86).
+- `DecisionModel` temperatures are actually applied, per question type at
+  inference only (never during training); legacy checkpoints default to
+  `T=1` with unchanged predictions (#87).
+
+### Security
+
+- All package and script checkpoint loaders use
+  `torch.load(..., weights_only=True)` by default and refuse files that
+  require full pickle unless the caller explicitly passes
+  `allow_unsafe_pickle=True` for a trusted legacy file (#92).
 
 ## [0.3.0] - 2026-10-02
 
