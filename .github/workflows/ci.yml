@@ -10,6 +10,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: lint (ruff + mypy, scoped)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install lint tools
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          uv venv --python python
+          uv pip install -e ".[dev,torch]"
+
+      - name: Ruff (new and touched modules)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          .venv/bin/python -m ruff check \
+            akasha_model/checkpoints.py akasha_model/mask_calibrate.py \
+            akasha_model/rewards.py akasha_model/decision.py akasha_model/rlcd.py \
+            tests/test_checkpoints.py tests/test_mask_ordinal_calibration.py
+
+      - name: Mypy (checkpoint and calibration modules)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          .venv/bin/python -m mypy \
+            akasha_model/checkpoints.py akasha_model/mask_calibrate.py akasha_model/rewards.py
   gate-lite:
     name: gate-lite (no torch)
     runs-on: ubuntu-latest
@@ -60,14 +92,18 @@ jobs:
           grep -q 'this run' examples/tetris/out/demo.html
 
   core:
-    name: core
+    name: core (py${{ matrix.python-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "${{ matrix.python-version }}"
 
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh

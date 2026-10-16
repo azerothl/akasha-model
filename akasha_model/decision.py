@@ -90,6 +90,13 @@ class DecisionModel(nn.Module):
         )
         self.register_buffer("temperature", torch.ones(3))
 
+    def set_temperature(self, values: Any) -> None:
+        """Set per-type (choice/score/noul) inference temperatures, all > 0."""
+        temperature = torch.as_tensor(values, dtype=self.temperature.dtype)
+        if temperature.shape != (3,) or not bool((temperature > 0).all()):
+            raise ValueError("temperature must be three strictly positive values")
+        self.temperature.copy_(temperature.to(self.temperature.device))
+
     def forward(
         self, input_ids: torch.Tensor, attention_mask: torch.Tensor,
         marker_pos: torch.Tensor, marker_mask: torch.Tensor, qtype: torch.Tensor,
@@ -105,6 +112,12 @@ class DecisionModel(nn.Module):
         index = marker_pos.clamp(min=0)[:, :, None].expand(-1, -1, hidden.size(-1))
         markers = torch.gather(hidden, 1, index)
         logits = self.scorer(markers).squeeze(-1).float()
+        if not self.training:
+            # Calibration is post-hoc: temperatures divide logits per question
+            # type at inference only, never during training/resume. A positive
+            # temperature preserves the ranking within each question.
+            temperatures = self.temperature.clamp_min(1e-6)
+            logits = logits / temperatures[qtype][:, None].to(logits.dtype)
         return logits.masked_fill(~marker_mask, -1e4)
 
 
@@ -119,6 +132,7 @@ def collate_items(batch: list[dict[str, Any]], pad_id: int) -> dict[str, torch.T
     marker_pos = torch.zeros((len(items), width), dtype=torch.long)
     marker_mask = torch.zeros((len(items), width), dtype=torch.bool)
     target = torch.zeros((len(items), width), dtype=torch.float32)
+    option_order = torch.zeros((len(items), width), dtype=torch.long)
     labels = []
     qtypes = []
     for row, item in enumerate(items):
@@ -129,6 +143,8 @@ def collate_items(batch: list[dict[str, Any]], pad_id: int) -> dict[str, torch.T
         marker_mask[row, :count] = True
         aligned = item["target"]
         target[row, :len(aligned)] = torch.tensor(aligned, dtype=torch.float32)
+        order = item.get("order") or list(range(count))
+        option_order[row, :len(order)] = torch.tensor(order, dtype=torch.long)
         labels.append(item.get("label", -1))
         qtypes.append(item["qtype"])
     return {
@@ -137,6 +153,7 @@ def collate_items(batch: list[dict[str, Any]], pad_id: int) -> dict[str, torch.T
         "marker_pos": marker_pos,
         "marker_mask": marker_mask,
         "target": target,
+        "option_order": option_order,
         "qtype": torch.tensor(qtypes, dtype=torch.long),
         "label": torch.tensor(labels, dtype=torch.long),
     }
@@ -212,6 +229,7 @@ class MaskCollator:
             "target": options,
             "qtype": QTYPES[question["t"]],
             "label": label,
+            "order": list(option_order) if option_order is not None else list(range(len(options))),
             "layout": chosen,
         }
 
@@ -286,19 +304,37 @@ def make_decision_model(config: dict[str, Any], device: torch.device) -> tuple[D
         head_layers=config.get("head_layers", 2),
         dropout=config.get("dropout", 0.1),
     )
-    temperature = config.get("temperature", [1.0, 1.0, 1.0])
-    model.temperature.copy_(torch.tensor(temperature, dtype=model.temperature.dtype))
+    model.set_temperature(config.get("temperature", [1.0, 1.0, 1.0]))
+
+
+
     return model.to(device), tokenizer
 
 
-def load_decision_checkpoint(path: str | Path, device: torch.device):
-    payload = torch.load(path, map_location="cpu", weights_only=False)
+def build_mask_model(payload: dict[str, Any], device: torch.device):
+    """Build a MASK decision model from an already-loaded payload."""
     config = payload["config"]
     model, tokenizer = make_decision_model(config, device)
     missing, unexpected = model.load_state_dict(payload["state_dict"], strict=False)
     if unexpected:
         raise ValueError(f"checkpoint mismatch: unexpected={unexpected}")
-    if any(not name.startswith("encoder.") for name in missing):
+    # Legacy checkpoints may predate the temperature buffer (defaults to 1).
+    tolerated = ("encoder.", "temperature")
+    if any(not name.startswith(tolerated) for name in missing):
+        raise ValueError(f"checkpoint mismatch: missing={missing}")
+    return model, tokenizer
+
+
+def load_decision_checkpoint(path: str | Path, device: torch.device, *, allow_unsafe_pickle: bool = False):
+    from .checkpoints import load_checkpoint_payload
+
+    payload = load_checkpoint_payload(path, allow_unsafe_pickle=allow_unsafe_pickle)
+    config = payload["config"]
+    model, tokenizer = make_decision_model(config, device)
+    missing, unexpected = model.load_state_dict(payload["state_dict"], strict=False)
+    if unexpected:
+        raise ValueError(f"checkpoint mismatch: unexpected={unexpected}")
+    if any(not name.startswith(("encoder.", "temperature")) for name in missing):
         raise ValueError(f"checkpoint mismatch: missing={missing}")
     return model, tokenizer, config
 
@@ -307,6 +343,9 @@ def save_decision_checkpoint(
     path: str | Path, model: DecisionModel, config: dict[str, Any], extra: dict | None = None,
 ) -> None:
     output = Path(path)
+    from .checkpoints import ARCH_MASK, stamp_payload
+
+    config = {**config, "temperature": [float(v) for v in model.temperature.detach().cpu().tolist()]}
     output.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "kind": "mask",
@@ -315,4 +354,4 @@ def save_decision_checkpoint(
     }
     if extra:
         payload.update(extra)
-    torch.save(payload, output)
+    torch.save(stamp_payload(payload, ARCH_MASK), output)

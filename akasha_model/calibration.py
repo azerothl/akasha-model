@@ -69,11 +69,15 @@ def main() -> None:
     old_temperature = float(config.get("temperature", 1.0))
     temperature = fit_temperature(logits, labels) * old_temperature
 
-    payload = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
+    from .checkpoints import load_checkpoint_payload
+
+    payload = load_checkpoint_payload(args.checkpoint)
     payload["config"]["temperature"] = temperature
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(payload, output)
+    from .checkpoints import ARCH_SINGLE_CHOICE, stamp_payload
+
+    torch.save(stamp_payload(payload, ARCH_SINGLE_CHOICE), output)
     print(json.dumps({
         "checkpoint": str(output),
         "calibration_examples": int(labels.numel()),

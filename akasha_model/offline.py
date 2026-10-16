@@ -102,6 +102,7 @@ def load_offline_torch_checkpoint(
     *,
     map_location: str = "cpu",
     deny_net: bool = True,
+    allow_unsafe_pickle: bool = False,
 ) -> tuple[Any, OfflineLoadResult]:
     """Load a local ``.pt`` payload with optional network denial.
 
@@ -115,7 +116,9 @@ def load_offline_torch_checkpoint(
             "Path B offline load requires torch; install akasha-model[torch]"
         ) from exc
     with deny_network(deny_net):
-        payload = torch.load(resolved, map_location=map_location, weights_only=False)
+        from .checkpoints import load_checkpoint_payload
+
+        payload = load_checkpoint_payload(resolved, allow_unsafe_pickle=allow_unsafe_pickle)
     meta = OfflineLoadResult(
         path=str(resolved),
         bytes=resolved.stat().st_size,

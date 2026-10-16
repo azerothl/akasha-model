@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -15,16 +14,35 @@ from torch.utils.data import DataLoader
 
 from .model import select_device
 from .multitask import (
-    MultiQuestionCollator, MultiQuestionDataset, MultiQuestionTinyScorer,
+    MultiQuestionCollator,
+    MultiQuestionDataset,
+    MultiQuestionTinyScorer,
     apply_multitask_calibration,
 )
-
 
 THRESHOLDS = (0.50, 0.60, 0.70, 0.80, 0.90, 0.95)
 
 
-def load_checkpoint(path: str | Path, device: torch.device):
-    payload = torch.load(path, map_location="cpu", weights_only=False)
+def build_byte_multitask(payload: dict, device: torch.device):
+    """Build a byte-multitask scorer from an already-loaded payload."""
+    config = payload["config"]
+    model = MultiQuestionTinyScorer(
+        width=config["width"],
+        rank=config["rank"],
+        context_tokens=config["context_tokens"],
+        question_tokens=config["question_tokens"],
+        max_score_levels=config.get("max_score_levels", 10),
+        encoder=config.get("encoder", "mean"),
+        lexical_multiplier=config.get("lexical_multiplier", 64.0),
+    )
+    model.load_state_dict(payload["state_dict"])
+    return model.to(device)
+
+
+def load_checkpoint(path: str | Path, device: torch.device, *, allow_unsafe_pickle: bool = False):
+    from .checkpoints import load_checkpoint_payload
+
+    payload = load_checkpoint_payload(path, allow_unsafe_pickle=allow_unsafe_pickle)
     config = payload["config"]
     model = MultiQuestionTinyScorer(
         width=config["width"],
