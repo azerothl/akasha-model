@@ -1,0 +1,25 @@
+name: Experiment
+description: A measured hypothesis (ablation, benchmark, architecture probe)
+labels: ["experiment"]
+body:
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: What might improve, and why it is not already known.
+    validations:
+      required: true
+  - type: textarea
+    id: protocol
+    attributes:
+      label: Protocol
+      description: Same splits and budget, at least 3 seeds for any gain claim, hardware, p50/p95 latency, per-type metrics. No promised gain before measurement.
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision rule
+      description: What result adopts, rejects, or defers this direction? Where is the decision recorded?
+    validations:
+      required: true

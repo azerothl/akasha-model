@@ -15,7 +15,9 @@ from .multitask import MultiQuestionCollator, MultiQuestionDataset, MultiQuestio
 
 
 def _load_checkpoint(path: str | Path, device: torch.device):
-    payload = torch.load(path, map_location="cpu", weights_only=False)
+    from .checkpoints import load_checkpoint_payload
+
+    payload = load_checkpoint_payload(path)
     config = payload["config"]
     model = MultiQuestionTinyScorer(
         width=config["width"], rank=config["rank"],

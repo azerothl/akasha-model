@@ -130,7 +130,9 @@ def initial_checkpoint(path: Path, seed: int) -> str:
         model, _ = make_decision_model(initial_config(), torch.device("cpu"))
         save_decision_checkpoint(path, model, initial_config(), {"initial_seed": seed})
         del model
-    payload = torch.load(path, map_location="cpu", weights_only=False)
+    from akasha_model.checkpoints import load_checkpoint_payload
+
+    payload = load_checkpoint_payload(path)
     if payload.get("initial_seed") != seed or payload.get("config") != initial_config():
         raise ValueError(f"initial checkpoint does not match experiment: {path}")
     return sha256_file(path)

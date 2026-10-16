@@ -84,7 +84,9 @@ def main() -> None:
         args.lexical_multiplier,
     ).to(device)
     if args.init:
-        payload = torch.load(args.init, map_location="cpu", weights_only=False)
+        from .checkpoints import load_checkpoint_payload
+
+        payload = load_checkpoint_payload(args.init)
         model.load_state_dict(payload["state_dict"])
     optimiser = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=1e-4)
     best, best_state = float("inf"), None
@@ -101,7 +103,9 @@ def main() -> None:
         }))
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({
+    from .checkpoints import ARCH_BYTE_MULTITASK, stamp_payload
+
+    torch.save(stamp_payload({
         "config": {
             "width": args.width, "rank": args.rank,
             "context_tokens": args.context_tokens,
@@ -112,7 +116,7 @@ def main() -> None:
             "lexical_multiplier": args.lexical_multiplier,
         },
         "state_dict": best_state,
-    }, output)
+    }, ARCH_BYTE_MULTITASK), output)
     print(json.dumps({"checkpoint": str(output), "best_validation_loss": best}))
 
 

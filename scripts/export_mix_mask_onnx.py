@@ -59,7 +59,9 @@ def main() -> int:
         }))
         return 2
 
-    payload = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
+    from akasha_model.checkpoints import load_checkpoint_payload
+
+    payload = load_checkpoint_payload(args.checkpoint)
     kind = payload.get("kind") or (payload.get("config") or {}).get("kind")
     if kind != "mask":
         print(json.dumps({
