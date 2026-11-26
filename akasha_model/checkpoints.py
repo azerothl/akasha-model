@@ -146,6 +146,24 @@ def load_checkpoint_payload(
     return payload
 
 
+def _resolve_local_encoder(payload: dict[str, Any]) -> dict[str, Any]:
+    config = payload["config"]
+    if config.get("encoder", "tiny") == "tiny":
+        return payload
+    name = config.get("hf_model")
+    if not isinstance(name, str) or not name:
+        raise CheckpointFormatError("checkpoint has no Hugging Face encoder identifier")
+    directory = Path(name).expanduser()
+    if not directory.is_dir():
+        from huggingface_hub import snapshot_download
+
+        try:
+            directory = Path(snapshot_download(repo_id=name, local_files_only=True))
+        except (OSError, ValueError) as exc:
+            raise CheckpointFormatError(f"Hugging Face encoder is unavailable locally: {name}") from exc
+    return {**payload, "config": {**config, "hf_model": str(directory.resolve())}}
+
+
 def load_any_checkpoint(
     path: str | Path,
     device: Any,
@@ -164,7 +182,7 @@ def load_any_checkpoint(
     if info.architecture == ARCH_MASK:
         from .decision import build_mask_model
 
-        model, tokenizer = build_mask_model(payload, device)
+        model, tokenizer = build_mask_model(_resolve_local_encoder(payload), device)
         return LoadedCheckpoint(
             info.architecture, model, config, info, tokenizer=tokenizer,
         )
