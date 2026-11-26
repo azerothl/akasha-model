@@ -132,7 +132,7 @@ def collate_items(batch: list[dict[str, Any]], pad_id: int) -> dict[str, torch.T
     marker_pos = torch.zeros((len(items), width), dtype=torch.long)
     marker_mask = torch.zeros((len(items), width), dtype=torch.bool)
     target = torch.zeros((len(items), width), dtype=torch.float32)
-    option_order = torch.zeros((len(items), width), dtype=torch.long)
+    option_order = torch.arange(width).repeat(len(items), 1)
     labels = []
     qtypes = []
     for row, item in enumerate(items):
