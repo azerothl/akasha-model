@@ -113,3 +113,101 @@ def test_fit_temperature_is_positive_and_reduces_nll():
     after = torch.nn.functional.cross_entropy(logits * 4 / temperature, labels)
     assert float(after) <= float(before) + 1e-5
     assert fit_temperature(torch.empty(0, 2), torch.empty(0, dtype=torch.long)) == 1.0
+
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_single_choice_factory_preserves_predictions_and_temperature(tmp_path, legacy):
+    from akasha_model.data import ChoiceExample
+    from akasha_model.model import make_system
+
+    device = torch.device("cpu")
+    config = {
+        "encoder": "tiny", "width": 8, "rank": 4, "context_tokens": 16,
+        "option_tokens": 8, "temperature": 2.0,
+    }
+    source, collator = make_system(config, device)
+    payload = {"config": config, "state_dict": source.state_dict()}
+    path = tmp_path / "single.pt"
+    torch.save(payload if legacy else stamp_payload(payload, ARCH_SINGLE_CHOICE), path)
+    loaded = load_any_checkpoint(path, device)
+    examples = [ChoiceExample("choose a", ("a", "b"), 0)]
+    with torch.inference_mode():
+        torch.testing.assert_close(loaded.model(loaded.collator(examples)), source(collator(examples)))
+    assert loaded.architecture == ARCH_SINGLE_CHOICE
+    assert loaded.info.legacy == legacy
+    assert loaded.model.temperature == 2.0
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_byte_multitask_factory_preserves_typed_predictions(tmp_path, legacy):
+    from akasha_model.multitask import (
+        MultiQuestionCollator,
+        MultiQuestionTinyScorer,
+        apply_multitask_calibration,
+        validate_multi,
+    )
+
+    config = {"width": 8, "rank": 4, "context_tokens": 16, "question_tokens": 16}
+    config["calibration"] = {"choice_temperature": 2.0, "score_temperature": 3.0}
+    source = MultiQuestionTinyScorer(8, 4, 16, 16)
+    payload = {"config": config, "state_dict": source.state_dict()}
+    path = tmp_path / "multitask.pt"
+    torch.save(payload if legacy else stamp_payload(payload, ARCH_BYTE_MULTITASK), path)
+    loaded = load_any_checkpoint(path, torch.device("cpu"))
+    batch = MultiQuestionCollator(context_tokens=16, question_tokens=16)([
+        validate_multi({
+            "context": "choose a",
+            "questions": [
+                {"id": "a", "type": "choice", "instructions": "Choose", "options": ["a", "b"], "label": 0},
+                {"id": "b", "type": "score", "instructions": "Rate", "levels": ["low", "high"], "label": 1},
+                {"id": "c", "type": "noul", "instructions": "Is it valid?", "label": 1},
+            ],
+        }),
+    ])
+    with torch.inference_mode():
+        original = apply_multitask_calibration(source(batch), config["calibration"])
+        restored = apply_multitask_calibration(loaded.model(batch), loaded.config["calibration"])
+        assert set(restored) == {"choice", "score", "noul"}
+        for kind in restored:
+            torch.testing.assert_close(restored[kind], original[kind])
+    assert loaded.architecture == ARCH_BYTE_MULTITASK
+    assert loaded.info.legacy == legacy
+
+
+@pytest.mark.parametrize("metadata", [
+    {"format": "other", "format_version": 1},
+    {"format": "akasha-checkpoint", "format_version": 2},
+    {"format": "akasha-checkpoint", "format_version": True},
+])
+def test_factory_rejects_unknown_format_metadata(metadata):
+    with pytest.raises(CheckpointFormatError, match="format"):
+        inspect_payload({"kind": "mask", "config": {}, "state_dict": {}, **metadata})
+
+
+def test_factory_resolves_hf_encoder_without_network(tmp_path, monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    import akasha_model.model as single_choice
+
+    config = {"encoder": "hf", "hf_model": "test/encoder", "context_tokens": 8, "option_tokens": 4}
+    payload = stamp_payload({"config": config, "state_dict": {}}, ARCH_SINGLE_CHOICE)
+    checkpoint = tmp_path / "hf.pt"
+    torch.save(payload, checkpoint)
+    encoder_dir = tmp_path / "cached-encoder"
+    encoder_dir.mkdir()
+
+    def download(*, repo_id, local_files_only):
+        assert repo_id == "test/encoder"
+        assert local_files_only is True
+        return encoder_dir
+
+    def build(data, device):
+        assert data["config"]["hf_model"] == str(encoder_dir.resolve())
+        return None, None
+
+    monkeypatch.setitem(sys.modules, "huggingface_hub", SimpleNamespace(snapshot_download=download))
+    monkeypatch.setattr(single_choice, "build_single_choice", build)
+    loaded = load_any_checkpoint(checkpoint, torch.device("cpu"))
+    assert loaded.config == config
