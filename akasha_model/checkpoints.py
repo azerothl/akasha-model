@@ -90,9 +90,14 @@ def inspect_payload(payload: Any) -> CheckpointInfo:
             "'single_choice' or 'byte_multitask' checkpoint"
         )
     version = payload.get("format_version")
+    if "format" in payload or "format_version" in payload:
+        if payload.get("format") != CHECKPOINT_FORMAT:
+            raise CheckpointFormatError("unknown checkpoint format")
+        if type(version) is not int or version != FORMAT_VERSION:
+            raise CheckpointFormatError(f"unsupported checkpoint format version: {version!r}")
     return CheckpointInfo(
         architecture=architecture,
-        format_version=int(version) if version is not None else None,
+        format_version=version,
         capabilities=tuple(payload.get("capabilities") or CAPABILITIES[architecture]),
         legacy=version is None,
     )
@@ -166,7 +171,7 @@ def load_any_checkpoint(
     if info.architecture == ARCH_SINGLE_CHOICE:
         from .model import build_single_choice
 
-        model, collator = build_single_choice(payload, device)
+        model, collator = build_single_choice(_resolve_local_encoder(payload), device)
         return LoadedCheckpoint(
             info.architecture, model, config, info, collator=collator,
         )
