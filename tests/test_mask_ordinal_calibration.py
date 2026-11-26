@@ -110,3 +110,29 @@ def test_temperature_must_be_strictly_positive():
         except ValueError:
             continue
         raise AssertionError(f"temperature {bad} should be rejected")
+
+
+def test_mask_collator_preserves_ordinal_reward_in_mixed_width_batch():
+    from akasha_model.decision import collate_items
+
+    tokenizer = ByteTokenizer()
+    collator = MaskCollator(tokenizer)
+    short = collator.encode_question(
+        "state",
+        {"type": "score", "instructions": "rate it", "levels": ["low", "high"],
+         "label": 0, "target": [1.0, 0.0]},
+        option_order=[1, 0],
+    )
+    long = collator.encode_question(
+        "state",
+        {"type": "score", "instructions": "rate it", "levels": ["low", "mid", "high"],
+         "label": 0, "target": [1.0, 0.0, 0.0]},
+    )
+    batch = collate_items([short, long], tokenizer.pad_token_id)
+    assert batch is not None
+    rewards = proper_reward(
+        torch.tensor([[0.2, 0.8, 0.0], [0.6, 0.3, 0.1]]),
+        batch["target"], batch["qtype"], batch["marker_mask"],
+        option_order=batch["option_order"],
+    )
+    assert torch.allclose(rewards[:1], _score_reward([0.8, 0.2], [1.0, 0.0]))
